@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="EvaluacionesApp.Views.Maintenance.CriteriaView"
+             xmlns:vm="clr-namespace:EvaluacionesApp.Views.Maintenance"
+             x:DataType="vm:CriteriaViewModel">
+  <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
+    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
+      <TextBlock Text="Curso:" VerticalAlignment="Center"/>
+      <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Name}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button Content="Add Root" Command="{Binding AddRootCriterion}" Margin="12,0,0,0"/>
+      <Button Content="Add Child" Command="{Binding AddChildCriterion}"/>
+      <Button Content="Delete" Command="{Binding DeleteCriterion}"/>
+    </StackPanel>
+    <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedCourse.Criteria}" SelectedItem="{Binding SelectedCriterion}">
+      <TreeView.ItemTemplate>
+        <TreeDataTemplate ItemsSource="{Binding Children}">
+          <TextBlock Text="{Binding Name}"/>
+        </TreeDataTemplate>
+      </TreeView.ItemTemplate>
+    </TreeView>
+    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
+      <TextBlock Text="Criterion details" FontWeight="Bold"/>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Name:" VerticalAlignment="Center"/>
+        <TextBox Width="240" Text="{Binding SelectedCriterion.Name}"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Weight:" VerticalAlignment="Center"/>
+        <TextBox Width="120" Text="{Binding SelectedCriterion.Weight}"/>
+      </StackPanel>
+      <TextBlock Text="No se permite borrar un criterio con subcriterios o con notas."/>
+    </StackPanel>
+  </Grid>
+</UserControl>

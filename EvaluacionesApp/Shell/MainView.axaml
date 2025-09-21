@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:shell="clr-namespace:Zafiro.Avalonia.Controls.Shell;assembly=Zafiro.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
+             x:Class="EvaluacionesApp.Shell.MainView" x:DataType="shellVm:MainViewModel"
+             xmlns:shellVm="clr-namespace:EvaluacionesApp.Shell">
+    <shell:ShellView ForceDesktopLayout="True" OpenPaneLength="250" Shell="{Binding Shell}" />
+</UserControl>
