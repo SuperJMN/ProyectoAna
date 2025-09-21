@@ -28,9 +28,8 @@ public partial class GradesView : UserControl
                 }
                 BuildDynamicColumns();
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"[GradesView] Error during initialization: {ex.Message}");
             }
         };
     }
@@ -61,13 +60,37 @@ public partial class GradesView : UserControl
         }
     }
 
+    private string? lastCourseId = null;
+    private int lastCriteriaCount = -1;
+    
     void BuildDynamicColumns()
     {
         if (ScoresGrid == null) return;
         if (DataContext is not GradesViewModel vm) return;
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        
+        // Check if we need to rebuild columns
+        var currentCourseId = vm.SelectedCourse?.Id;
+        var leaves = vm.SelectedCourse?.Criteria is null ? Array.Empty<EvaluacionesApp.Models.Criterion>() : GradesViewModel.GetLeafCriteria(vm.SelectedCourse.Criteria).ToArray();
+        
+        if (currentCourseId == lastCourseId && leaves.Length == lastCriteriaCount)
+        {
+            Console.WriteLine($"[PERF] Skip column rebuild - same course and criteria count");
+            return;
+        }
+        
+        lastCourseId = currentCourseId;
+        lastCriteriaCount = leaves.Length;
+        
+        // Disconnect ItemsSource before clearing columns to avoid re-rendering
+        var oldItemsSource = ScoresGrid.ItemsSource;
+        ScoresGrid.ItemsSource = null;
+        
         // Clear columns
         ScoresGrid.Columns.Clear();
+        Console.WriteLine($"[PERF] Clear columns: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
 
         // Student column
         ScoresGrid.Columns.Add(new DataGridTextColumn
@@ -77,23 +100,32 @@ public partial class GradesView : UserControl
             IsReadOnly = true
         });
 
-        var leaves = vm.SelectedCourse?.Criteria is null ? Array.Empty<EvaluacionesApp.Models.Criterion>() : GradesViewModel.GetLeafCriteria(vm.SelectedCourse.Criteria).ToArray();
-        vm.RecomputeWeights();
+        // Already computed above
+        Console.WriteLine($"[PERF] Get leaves: {sw.ElapsedMilliseconds}ms, Count: {leaves.Length}");
+        sw.Restart();
         
-        // Debug output
-        System.Diagnostics.Debug.WriteLine($"[GradesView] Building columns: {leaves.Length} leaf criteria found");
-        System.Diagnostics.Debug.WriteLine($"[GradesView] ScoreRows count: {vm.ScoreRows.Count}");
+        vm.RecomputeWeights();
+        Console.WriteLine($"[PERF] Recompute weights: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
 
         foreach (var c in leaves)
         {
-            var col = new DataGridTemplateColumn
+            // Use simple text column instead of template for better performance
+            var col = new DataGridTextColumn
             {
                 Header = c.Name,
-                CellTemplate = CreateCellTemplate(c.Id, vm),
-                CellEditingTemplate = CreateCellTemplate(c.Id, vm)
+                Binding = new Binding($"Scores[{c.Id}]") 
+                { 
+                    Mode = BindingMode.TwoWay,
+                    Converter = DoubleConverterCache.Instance,
+                    UpdateSourceTrigger = UpdateSourceTrigger.LostFocus
+                },
+                IsReadOnly = false
             };
             ScoresGrid.Columns.Add(col);
         }
+        Console.WriteLine($"[PERF] Add {leaves.Length} criterion columns: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
 
         // Total column
         ScoresGrid.Columns.Add(new DataGridTextColumn
@@ -103,31 +135,45 @@ public partial class GradesView : UserControl
             IsReadOnly = true
         });
         
-        // DataGrid will update automatically through binding
+        // Restore ItemsSource
+        ScoresGrid.ItemsSource = oldItemsSource;
+        
+        Console.WriteLine($"[PERF] Total BuildDynamicColumns: {sw.Elapsed.TotalMilliseconds}ms");
     }
 
     static IDataTemplate CreateCellTemplate(string criterionId, GradesViewModel vm)
     {
-        var binding = new Binding($"Scores[{criterionId}]") { Mode = BindingMode.TwoWay, Converter = new NullableDoubleStringConverter(), UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged };
-        var template = new FuncDataTemplate<object>((ctx, _) =>
+        // Use a static converter instance
+        var converter = DoubleConverterCache.Instance;
+        var binding = new Binding($"Scores[{criterionId}]") 
+        { 
+            Mode = BindingMode.TwoWay, 
+            Converter = converter, 
+            UpdateSourceTrigger = UpdateSourceTrigger.LostFocus 
+        };
+        
+        var template = new FuncDataTemplate<ScoreRow>((row, _) =>
         {
-            var tb = new TextBox
+            var tb = new TextBox();
+            tb.Bind(TextBox.TextProperty, binding);
+            
+            // Simplified event handler
+            tb.LostFocus += (_, __) =>
             {
-                [!TextBox.TextProperty] = binding
-            };
-            tb.TextChanged += (_, __) =>
-            {
-                if (ctx is ScoreRow row)
-                {
-                    row.Touch();
-                    vm.NotifyScoreEdited();
-                }
+                row?.Touch();
+                vm.NotifyScoreEdited();
             };
             return tb;
         });
         return template;
     }
 
+    // Singleton converter to avoid multiple instances
+    static class DoubleConverterCache
+    {
+        public static readonly IValueConverter Instance = new NullableDoubleStringConverter();
+    }
+    
     class NullableDoubleStringConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)

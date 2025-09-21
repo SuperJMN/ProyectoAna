@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -16,7 +17,13 @@ public partial class GradesViewModel : ReactiveObject
     [Reactive] private Course? selectedCourse;
     [Reactive] private Class? selectedClass;
 
-    public ObservableCollection<ScoreRow> ScoreRows { get; } = new();
+    private ObservableCollection<ScoreRow> scoreRows = new();
+    public ObservableCollection<ScoreRow> ScoreRows 
+    { 
+        get => scoreRows; 
+        private set => this.RaiseAndSetIfChanged(ref scoreRows, value); 
+    }
+    
     public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
     [Reactive] private int selectedTerm = 1;
 
@@ -74,28 +81,43 @@ public partial class GradesViewModel : ReactiveObject
             ? SelectedCourse.Classes.FirstOrDefault(cl => cl.Id == classId)
             : SelectedCourse?.Classes.FirstOrDefault();
         BuildScoreRows();
-        System.Diagnostics.Debug.WriteLine($"[GradesVM.Reload] Course: {SelectedCourse?.Name}, Class: {SelectedClass?.Name}, Students: {SelectedClass?.Students.Count}");
     }
 
     void BuildScoreRows()
     {
-        ScoreRows.Clear();
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        
         if (SelectedCourse == null || SelectedClass == null)
         {
-            System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Early return: Course={SelectedCourse?.Name}, Class={SelectedClass?.Name}");
+            if (ScoreRows.Count > 0)
+                ScoreRows = new ObservableCollection<ScoreRow>();
             return;
         }
+        
+        // Defer clearing until we have new data ready
+        Console.WriteLine($"[PERF] Start BuildScoreRows: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
 
         // Use data already in memory instead of reloading from disk
         var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
+        Console.WriteLine($"[PERF] Get leaf criteria: {sw.ElapsedMilliseconds}ms, Count: {leaves.Count}");
+        sw.Restart();
+        
         RecomputeWeights();
+        Console.WriteLine($"[PERF] Recompute weights: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
         
         // Group by key to handle duplicates, taking the last value
         var existing = (SelectedClass.Assessments ?? new List<Assessment>())
             .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm && a.StudentId != null && a.CriterionId != null)
             .GroupBy(a => (a.StudentId!, a.CriterionId!))
             .ToDictionary(g => g.Key, g => g.Last().Score);
+        Console.WriteLine($"[PERF] Build existing dict: {sw.ElapsedMilliseconds}ms, Count: {existing.Count}");
+        sw.Restart();
 
+        int studentCount = SelectedClass.Students.Count;
+        var newRows = new List<ScoreRow>(studentCount);
+        
         foreach (var student in SelectedClass.Students)
         {
             var row = new ScoreRow(student);
@@ -105,10 +127,17 @@ public partial class GradesViewModel : ReactiveObject
                 var key = (student.Id, leaf.Id);
                 row.Scores[leaf.Id] = existing.TryGetValue(key, out var v) ? v : null;
             }
-            ScoreRows.Add(row);
+            newRows.Add(row);
         }
         
-        System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Created {ScoreRows.Count} rows");
+        Console.WriteLine($"[PERF] Create {studentCount} rows in memory: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
+        
+        // Replace entire collection to avoid individual add notifications
+        ScoreRows = new ObservableCollection<ScoreRow>(newRows);
+        
+        Console.WriteLine($"[PERF] Replace entire collection: {sw.ElapsedMilliseconds}ms");
+        Console.WriteLine($"[PERF] Total BuildScoreRows: {sw.Elapsed.TotalMilliseconds}ms");
     }
 
     public static IEnumerable<Criterion> GetLeafCriteria(IEnumerable<Criterion> nodes)
@@ -169,12 +198,41 @@ public partial class GradesViewModel : ReactiveObject
 public class ScoreRow : ReactiveObject
 {
     public Student Student { get; }
-    public Dictionary<string, double?> Scores { get; } = new();
-    Dictionary<string, double> weights = new();
-    public double Total => Scores.Sum(kv => (kv.Value ?? 0) * (weights.TryGetValue(kv.Key, out var w) ? w : 0));
+    private readonly Dictionary<string, double?> scores = new();
+    private Dictionary<string, double> weights = new();
+    private double? cachedTotal;
+    
+    public Dictionary<string, double?> Scores => scores;
+    
+    public double Total
+    {
+        get
+        {
+            if (!cachedTotal.HasValue)
+            {
+                cachedTotal = scores.Sum(kv => (kv.Value ?? 0) * (weights.TryGetValue(kv.Key, out var w) ? w : 0));
+            }
+            return cachedTotal.Value;
+        }
+    }
 
-    public void SetWeights(Dictionary<string, double> map) => weights = map;
-    public void Touch() => this.RaisePropertyChanged(nameof(Total));
+    public void SetWeights(Dictionary<string, double> map)
+    {
+        weights = map;
+        cachedTotal = null;
+    }
+    
+    public void Touch()
+    {
+        cachedTotal = null;
+        this.RaisePropertyChanged(nameof(Total));
+    }
+    
+    public void SetScore(string criterionId, double? value)
+    {
+        scores[criterionId] = value;
+        Touch();
+    }
 
     public ScoreRow(Student student) { Student = student; }
 }
