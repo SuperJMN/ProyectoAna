@@ -20,11 +20,18 @@ public partial class GradesView : UserControl
         DataContextChanged += OnDataContextChanged;
         this.AttachedToVisualTree += async (_, __) =>
         {
-            if (DataContext is GradesViewModel vm)
+            try
             {
-                await vm.Reload();
+                if (DataContext is GradesViewModel vm)
+                {
+                    await vm.Reload();
+                }
+                BuildDynamicColumns();
             }
-            BuildDynamicColumns();
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[GradesView] Error during initialization: {ex.Message}");
+            }
         };
     }
 
@@ -48,8 +55,7 @@ public partial class GradesView : UserControl
     void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(GradesViewModel.SelectedCourse) || 
-            e.PropertyName == nameof(GradesViewModel.SelectedClass) ||
-            e.PropertyName == nameof(GradesViewModel.ScoreRows))
+            e.PropertyName == nameof(GradesViewModel.SelectedClass))
         {
             BuildDynamicColumns();
         }
@@ -97,9 +103,7 @@ public partial class GradesView : UserControl
             IsReadOnly = true
         });
         
-        // Force DataGrid to refresh
-        ScoresGrid.ItemsSource = null;
-        ScoresGrid.ItemsSource = vm.ScoreRows;
+        // DataGrid will update automatically through binding
     }
 
     static IDataTemplate CreateCellTemplate(string criterionId, GradesViewModel vm)

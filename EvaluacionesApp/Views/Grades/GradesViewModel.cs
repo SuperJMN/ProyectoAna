@@ -29,14 +29,7 @@ public partial class GradesViewModel : ReactiveObject
     {
         this.persistence = persistence;
 
-        // Load
-        var trigger = System.Reactive.Linq.Observable.Merge(
-            this.WhenAnyValue(x => x.SelectedCourse).Select(_ => System.Reactive.Unit.Default),
-            this.WhenAnyValue(x => x.SelectedClass).Select(_ => System.Reactive.Unit.Default),
-            this.WhenAnyValue(x => x.SelectedTerm).Select(_ => System.Reactive.Unit.Default));
-        trigger.Subscribe(System.Reactive.Observer.Create<System.Reactive.Unit>(_ => BuildScoreRows()));
-
-        autoSaveTimer = new System.Timers.Timer(1000);
+        autoSaveTimer = new System.Timers.Timer(5000); // Changed from 1s to 5s
         autoSaveTimer.Elapsed += async (_, _) =>
         {
             if (IsDirty)
@@ -48,6 +41,13 @@ public partial class GradesViewModel : ReactiveObject
         autoSaveTimer.Start();
 
         Load();
+        
+        // Subscribe to changes after initial load
+        var trigger = System.Reactive.Linq.Observable.Merge(
+            this.WhenAnyValue(x => x.SelectedCourse).Select(_ => System.Reactive.Unit.Default),
+            this.WhenAnyValue(x => x.SelectedClass).Select(_ => System.Reactive.Unit.Default),
+            this.WhenAnyValue(x => x.SelectedTerm).Select(_ => System.Reactive.Unit.Default));
+        trigger.Subscribe(System.Reactive.Observer.Create<System.Reactive.Unit>(_ => BuildScoreRows()));
     }
 
     async void Load()
@@ -77,7 +77,7 @@ public partial class GradesViewModel : ReactiveObject
         System.Diagnostics.Debug.WriteLine($"[GradesVM.Reload] Course: {SelectedCourse?.Name}, Class: {SelectedClass?.Name}, Students: {SelectedClass?.Students.Count}");
     }
 
-    async void BuildScoreRows()
+    void BuildScoreRows()
     {
         ScoreRows.Clear();
         if (SelectedCourse == null || SelectedClass == null)
@@ -86,20 +86,17 @@ public partial class GradesViewModel : ReactiveObject
             return;
         }
 
-        // Use fresh data from disk to reflect changes done in other sections
-        var root = await persistence.Load();
-        var freshCourse = root.Courses.FirstOrDefault(c => c.Id == SelectedCourse.Id) ?? SelectedCourse;
-        var freshClass = freshCourse.Classes.FirstOrDefault(cl => cl.Id == SelectedClass.Id) ?? SelectedClass;
-        
-        System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Fresh data: Students={freshClass.Students.Count}, Criteria={freshCourse.Criteria.Count}");
-
-        var leaves = GetLeafCriteria(freshCourse.Criteria).ToList();
+        // Use data already in memory instead of reloading from disk
+        var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
         RecomputeWeights();
-        var existing = freshClass.Assessments
-            .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm)
-            .ToDictionary(a => (a.StudentId, a.CriterionId), a => a.Score);
+        
+        // Group by key to handle duplicates, taking the last value
+        var existing = (SelectedClass.Assessments ?? new List<Assessment>())
+            .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm && a.StudentId != null && a.CriterionId != null)
+            .GroupBy(a => (a.StudentId!, a.CriterionId!))
+            .ToDictionary(g => g.Key, g => g.Last().Score);
 
-        foreach (var student in freshClass.Students)
+        foreach (var student in SelectedClass.Students)
         {
             var row = new ScoreRow(student);
             row.SetWeights(weights);
@@ -112,7 +109,6 @@ public partial class GradesViewModel : ReactiveObject
         }
         
         System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Created {ScoreRows.Count} rows");
-        this.RaisePropertyChanged(nameof(ScoreRows));
     }
 
     public static IEnumerable<Criterion> GetLeafCriteria(IEnumerable<Criterion> nodes)

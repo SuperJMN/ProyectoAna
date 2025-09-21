@@ -96,6 +96,9 @@ public class PersistenceService
         await _fileLock.WaitAsync();
         try
         {
+            // Clean duplicates before saving
+            CleanDuplicateAssessments(root);
+            
             Directory.CreateDirectory(Path.GetDirectoryName(DataPath)!);
             
             // Write to temp file first to avoid corruption
@@ -129,6 +132,31 @@ public class PersistenceService
         finally
         {
             _fileLock.Release();
+        }
+    }
+    
+    private static void CleanDuplicateAssessments(Root root)
+    {
+        foreach (var course in root.Courses)
+        {
+            foreach (var cls in course.Classes)
+            {
+                // Only clean if there are duplicates
+                var originalCount = cls.Assessments.Count;
+                var uniqueKeys = cls.Assessments
+                    .Select(a => (a.StudentId, a.CriterionId, a.Term))
+                    .Distinct()
+                    .Count();
+                    
+                if (originalCount > uniqueKeys)
+                {
+                    // Group assessments by (studentId, criterionId, term) and take the last one
+                    cls.Assessments = cls.Assessments
+                        .GroupBy(a => (a.StudentId, a.CriterionId, a.Term))
+                        .Select(g => g.Last())
+                        .ToList();
+                }
+            }
         }
     }
 }
