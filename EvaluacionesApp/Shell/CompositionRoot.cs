@@ -19,7 +19,8 @@ public static class CompositionRoot
     {
         ServiceCollection services = new();
 
-        services.AddSingleton<IShell, Zafiro.Avalonia.Controls.Shell.ShellDesign>();
+        // Use the real Shell implementation which depends on ShellProperties and registered sections
+        services.AddSingleton<IShell, Zafiro.UI.Shell.Shell>();
         services.AddSingleton(new ShellProperties("Evaluaciones", navigatorObj => CreateHeaderFromNavigator(navigatorObj)));
         services.AddSingleton(DialogService.Create());
 
@@ -38,8 +39,8 @@ public static class CompositionRoot
         services.AddTransient<Views.Maintenance.StudentsViewModel>();
         services.AddTransient<Views.Maintenance.CriteriaViewModel>();
 
-        // Sections registration (disabled temporarily to avoid runtime issues with Navigator/Splat)
-        // AddSections(services);
+        // Sections registration
+        AddSections(services);
 
         services.AddTransient<MainViewModel>();
 
