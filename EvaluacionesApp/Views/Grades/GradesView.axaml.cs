@@ -18,6 +18,14 @@ public partial class GradesView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        this.AttachedToVisualTree += async (_, __) =>
+        {
+            if (DataContext is GradesViewModel vm)
+            {
+                await vm.Reload();
+            }
+            BuildDynamicColumns();
+        };
     }
 
     void OnDataContextChanged(object? sender, EventArgs e)
@@ -39,7 +47,9 @@ public partial class GradesView : UserControl
 
     void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(GradesViewModel.SelectedCourse) || e.PropertyName == nameof(GradesViewModel.SelectedClass))
+        if (e.PropertyName == nameof(GradesViewModel.SelectedCourse) || 
+            e.PropertyName == nameof(GradesViewModel.SelectedClass) ||
+            e.PropertyName == nameof(GradesViewModel.ScoreRows))
         {
             BuildDynamicColumns();
         }
@@ -50,9 +60,8 @@ public partial class GradesView : UserControl
         if (ScoresGrid == null) return;
         if (DataContext is not GradesViewModel vm) return;
 
-        // Keep only 0 columns
-        while (ScoresGrid.Columns.Count > 0)
-            ScoresGrid.Columns.RemoveAt(ScoresGrid.Columns.Count - 1);
+        // Clear columns
+        ScoresGrid.Columns.Clear();
 
         // Student column
         ScoresGrid.Columns.Add(new DataGridTextColumn
@@ -64,6 +73,10 @@ public partial class GradesView : UserControl
 
         var leaves = vm.SelectedCourse?.Criteria is null ? Array.Empty<EvaluacionesApp.Models.Criterion>() : GradesViewModel.GetLeafCriteria(vm.SelectedCourse.Criteria).ToArray();
         vm.RecomputeWeights();
+        
+        // Debug output
+        System.Diagnostics.Debug.WriteLine($"[GradesView] Building columns: {leaves.Length} leaf criteria found");
+        System.Diagnostics.Debug.WriteLine($"[GradesView] ScoreRows count: {vm.ScoreRows.Count}");
 
         foreach (var c in leaves)
         {
@@ -83,6 +96,10 @@ public partial class GradesView : UserControl
             Binding = new Binding("Total") { StringFormat = "F2" },
             IsReadOnly = true
         });
+        
+        // Force DataGrid to refresh
+        ScoresGrid.ItemsSource = null;
+        ScoresGrid.ItemsSource = vm.ScoreRows;
     }
 
     static IDataTemplate CreateCellTemplate(string criterionId, GradesViewModel vm)

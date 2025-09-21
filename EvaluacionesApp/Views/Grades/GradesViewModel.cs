@@ -61,18 +61,45 @@ public partial class GradesViewModel : ReactiveObject
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
     }
 
-    void BuildScoreRows()
+    public async System.Threading.Tasks.Task Reload()
+    {
+        var courseId = SelectedCourse?.Id;
+        var classId = SelectedClass?.Id;
+        var root = await persistence.Load();
+        Courses.Clear();
+        foreach (var c in root.Courses)
+            Courses.Add(c);
+        SelectedCourse = courseId != null ? Courses.FirstOrDefault(c => c.Id == courseId) : Courses.FirstOrDefault();
+        SelectedClass = (SelectedCourse != null && classId != null)
+            ? SelectedCourse.Classes.FirstOrDefault(cl => cl.Id == classId)
+            : SelectedCourse?.Classes.FirstOrDefault();
+        BuildScoreRows();
+        System.Diagnostics.Debug.WriteLine($"[GradesVM.Reload] Course: {SelectedCourse?.Name}, Class: {SelectedClass?.Name}, Students: {SelectedClass?.Students.Count}");
+    }
+
+    async void BuildScoreRows()
     {
         ScoreRows.Clear();
-        if (SelectedCourse == null || SelectedClass == null) return;
+        if (SelectedCourse == null || SelectedClass == null)
+        {
+            System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Early return: Course={SelectedCourse?.Name}, Class={SelectedClass?.Name}");
+            return;
+        }
 
-        var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
+        // Use fresh data from disk to reflect changes done in other sections
+        var root = await persistence.Load();
+        var freshCourse = root.Courses.FirstOrDefault(c => c.Id == SelectedCourse.Id) ?? SelectedCourse;
+        var freshClass = freshCourse.Classes.FirstOrDefault(cl => cl.Id == SelectedClass.Id) ?? SelectedClass;
+        
+        System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Fresh data: Students={freshClass.Students.Count}, Criteria={freshCourse.Criteria.Count}");
+
+        var leaves = GetLeafCriteria(freshCourse.Criteria).ToList();
         RecomputeWeights();
-        var existing = SelectedClass.Assessments
+        var existing = freshClass.Assessments
             .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm)
             .ToDictionary(a => (a.StudentId, a.CriterionId), a => a.Score);
 
-        foreach (var student in SelectedClass.Students)
+        foreach (var student in freshClass.Students)
         {
             var row = new ScoreRow(student);
             row.SetWeights(weights);
@@ -83,6 +110,9 @@ public partial class GradesViewModel : ReactiveObject
             }
             ScoreRows.Add(row);
         }
+        
+        System.Diagnostics.Debug.WriteLine($"[BuildScoreRows] Created {ScoreRows.Count} rows");
+        this.RaisePropertyChanged(nameof(ScoreRows));
     }
 
     public static IEnumerable<Criterion> GetLeafCriteria(IEnumerable<Criterion> nodes)
