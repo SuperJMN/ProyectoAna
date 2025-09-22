@@ -31,11 +31,11 @@
       <TextBlock Text="Criterion details" FontWeight="Bold"/>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Width="240" Text="{Binding SelectedCriterion.Name}"/>
+        <TextBox x:Name="NameTextBox" Width="240" Text="{Binding SelectedCriterion.Name}"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Weight:" VerticalAlignment="Center"/>
-        <TextBox Width="120" Text="{Binding SelectedCriterion.Weight}"/>
+        <TextBox x:Name="WeightTextBox" Width="120" Text="{Binding SelectedCriterion.Weight}"/>
       </StackPanel>
       <TextBlock Text="No se permite borrar un criterio con subcriterios o con notas."/>
     </StackPanel>

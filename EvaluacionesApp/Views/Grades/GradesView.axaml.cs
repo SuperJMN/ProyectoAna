@@ -1,19 +1,22 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Markup.Xaml.Templates;
 using EvaluacionesApp.Views.Grades;
-
+using Zafiro.Avalonia.Controls.SlimDataGrid;
+using Zafiro.Avalonia.Controls;
+using Avalonia.VisualTree;
+using Avalonia.Markup.Xaml;
+using System.Reactive.Linq;
 namespace EvaluacionesApp.Views.Grades;
 
 public partial class GradesView : UserControl
 {
-    IDisposable? subscription;
-
     public GradesView()
     {
         InitializeComponent();
@@ -62,6 +65,7 @@ public partial class GradesView : UserControl
 
     private string? lastCourseId = null;
     private int lastCriteriaCount = -1;
+    private IDisposable? subscription;
     
     void BuildDynamicColumns()
     {
@@ -71,7 +75,7 @@ public partial class GradesView : UserControl
         var sw = System.Diagnostics.Stopwatch.StartNew();
         
         // Check if we need to rebuild columns
-        var currentCourseId = vm.SelectedCourse?.Id;
+        var currentCourseId = vm.SelectedCourse?.Id.ToString();
         var leaves = vm.SelectedCourse?.Criteria is null ? Array.Empty<EvaluacionesApp.Models.Criterion>() : GradesViewModel.GetLeafCriteria(vm.SelectedCourse.Criteria).ToArray();
         
         if (currentCourseId == lastCourseId && leaves.Length == lastCriteriaCount)
@@ -83,22 +87,13 @@ public partial class GradesView : UserControl
         lastCourseId = currentCourseId;
         lastCriteriaCount = leaves.Length;
         
-        // Disconnect ItemsSource before clearing columns to avoid re-rendering
-        var oldItemsSource = ScoresGrid.ItemsSource;
-        ScoresGrid.ItemsSource = null;
-        
-        // Clear columns
-        ScoresGrid.Columns.Clear();
+        // Clear all columns except the first (Alumno)
+        while (ScoresGrid.Columns.Count > 1)
+        {
+            ScoresGrid.Columns.RemoveAt(ScoresGrid.Columns.Count - 1);
+        }
         Console.WriteLine($"[PERF] Clear columns: {sw.ElapsedMilliseconds}ms");
         sw.Restart();
-
-        // Student column
-        ScoresGrid.Columns.Add(new DataGridTextColumn
-        {
-            Header = "Alumno",
-            Binding = new Binding("Student.Name"),
-            IsReadOnly = true
-        });
 
         // Already computed above
         Console.WriteLine($"[PERF] Get leaves: {sw.ElapsedMilliseconds}ms, Count: {leaves.Length}");
@@ -110,17 +105,16 @@ public partial class GradesView : UserControl
 
         foreach (var c in leaves)
         {
-            // Use simple text column instead of template for better performance
-            var col = new DataGridTextColumn
+            var col = new Column
             {
                 Header = c.Name,
-                Binding = new Binding($"Scores[{c.Id}]") 
-                { 
-                    Mode = BindingMode.TwoWay,
-                    Converter = DoubleConverterCache.Instance,
-                    UpdateSourceTrigger = UpdateSourceTrigger.LostFocus
+                Width = GridLength.Star,
+                // Bind to self to get the whole row
+                Binding = new Binding(".")
+                {
+                    Mode = BindingMode.OneWay
                 },
-                IsReadOnly = false
+                CellTemplate = CreateEditableTextTemplate(c.Id.ToString(), vm)
             };
             ScoresGrid.Columns.Add(col);
         }
@@ -128,44 +122,81 @@ public partial class GradesView : UserControl
         sw.Restart();
 
         // Total column
-        ScoresGrid.Columns.Add(new DataGridTextColumn
+        ScoresGrid.Columns.Add(new Column
         {
             Header = "Total",
-            Binding = new Binding("Total") { StringFormat = "F2" },
-            IsReadOnly = true
+            Width = GridLength.Auto,
+            Binding = new Binding("Total") { StringFormat = "F2" }
         });
-        
-        // Restore ItemsSource
-        ScoresGrid.ItemsSource = oldItemsSource;
         
         Console.WriteLine($"[PERF] Total BuildDynamicColumns: {sw.Elapsed.TotalMilliseconds}ms");
     }
 
-    static IDataTemplate CreateCellTemplate(string criterionId, GradesViewModel vm)
+    private IDataTemplate CreateEditableTextTemplate(string criterionId, GradesViewModel vm)
     {
-        // Use a static converter instance
-        var converter = DoubleConverterCache.Instance;
-        var binding = new Binding($"Scores[{criterionId}]") 
-        { 
-            Mode = BindingMode.TwoWay, 
-            Converter = converter, 
-            UpdateSourceTrigger = UpdateSourceTrigger.LostFocus 
-        };
-        
-        var template = new FuncDataTemplate<ScoreRow>((row, _) =>
+        // Direct approach without relying on SlimDataGrid's binding
+        return new FuncDataTemplate<object>((data, _) =>
         {
-            var tb = new TextBox();
-            tb.Bind(TextBox.TextProperty, binding);
+            var textBox = new TextBox();
             
-            // Simplified event handler
-            tb.LostFocus += (_, __) =>
+            // The data parameter should be the entire row (ScoreRow)
+            if (data is ScoreRow row)
             {
-                row?.Touch();
-                vm.NotifyScoreEdited();
-            };
-            return tb;
+                // Set initial value
+                if (row.Scores.TryGetValue(criterionId, out var score))
+                {
+                    textBox.Text = score?.ToString() ?? string.Empty;
+                }
+                
+                // Handle text changes directly
+                bool isUpdating = false;
+                textBox.TextChanged += (sender, e) =>
+                {
+                    if (isUpdating) return;
+                    
+                    var tb = sender as TextBox;
+                    if (tb != null)
+                    {
+                        var text = tb.Text;
+                        Console.WriteLine($"[DEBUG] TextChanged for criterion {criterionId}: '{text}' (Student: {row.Student.Name})");
+                    }
+                };
+                
+                // Handle lost focus to save changes
+                textBox.LostFocus += (sender, e) =>
+                {
+                    var tb = sender as TextBox;
+                    if (tb != null)
+                    {
+                        isUpdating = true;
+                        var text = tb.Text;
+                        Console.WriteLine($"[DEBUG] LostFocus for criterion {criterionId}: '{text}' (Student: {row.Student.Name})");
+                        
+                        if (double.TryParse(text, out var newValue))
+                        {
+                            row.Scores[criterionId] = newValue;
+                            Console.WriteLine($"[DEBUG] Set score to {newValue} for student {row.Student.Name}");
+                        }
+                        else if (string.IsNullOrWhiteSpace(text))
+                        {
+                            row.Scores[criterionId] = null;
+                            Console.WriteLine($"[DEBUG] Cleared score for student {row.Student.Name}");
+                        }
+                        
+                        row.Touch();
+                        vm.NotifyScoreEdited();
+                        Console.WriteLine($"[DEBUG] Notified score edit");
+                        isUpdating = false;
+                    }
+                };
+            }
+            else
+            {
+                Console.WriteLine($"[DEBUG] Warning: data is not ScoreRow, it's {data?.GetType()?.Name ?? "null"}");
+            }
+            
+            return textBox;
         });
-        return template;
     }
 
     // Singleton converter to avoid multiple instances

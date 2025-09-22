@@ -98,4 +98,10 @@ public partial class CriteriaViewModel : ReactiveObject
         var root = new Root { Courses = Courses.ToList() };
         await persistence.Save(root);
     }
+    
+    public async void SaveCommand()
+    {
+        var root = new Root { Courses = Courses.ToList() };
+        await persistence.Save(root);
+    }
 }
