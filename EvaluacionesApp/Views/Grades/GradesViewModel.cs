@@ -32,11 +32,13 @@ public partial class GradesViewModel : ReactiveObject
     [Reactive] private bool isDirty;
     Dictionary<string, double> weights = new();
 
+    readonly System.Collections.Generic.List<IDisposable> rowSubscriptions = new();
+
     public GradesViewModel(PersistenceService persistence)
     {
         this.persistence = persistence;
 
-        autoSaveTimer = new System.Timers.Timer(5000); // Changed from 1s to 5s
+        autoSaveTimer = new System.Timers.Timer(5000);
         autoSaveTimer.Elapsed += async (_, _) =>
         {
             if (IsDirty)
@@ -49,7 +51,6 @@ public partial class GradesViewModel : ReactiveObject
 
         Load();
         
-        // Subscribe to changes after initial load
         var trigger = System.Reactive.Linq.Observable.Merge(
             this.WhenAnyValue(x => x.SelectedCourse).Select(_ => System.Reactive.Unit.Default),
             this.WhenAnyValue(x => x.SelectedClass).Select(_ => System.Reactive.Unit.Default),
@@ -68,7 +69,7 @@ public partial class GradesViewModel : ReactiveObject
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
     }
 
-    public async System.Threading.Tasks.Task Reload()
+    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> Reload => ReactiveCommand.CreateFromTask(async () =>
     {
         var courseId = SelectedCourse?.Id;
         var classId = SelectedClass?.Id;
@@ -81,39 +82,25 @@ public partial class GradesViewModel : ReactiveObject
             ? SelectedCourse.Classes.FirstOrDefault(cl => cl.Id == classId)
             : SelectedCourse?.Classes.FirstOrDefault();
         BuildScoreRows();
-    }
+    });
 
     void BuildScoreRows()
     {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        
         if (SelectedCourse == null || SelectedClass == null)
         {
             if (ScoreRows.Count > 0)
                 ScoreRows = new ObservableCollection<ScoreRow>();
+            ClearRowSubscriptions();
             return;
         }
-        
-        // Defer clearing until we have new data ready
-        Console.WriteLine($"[PERF] Start BuildScoreRows: {sw.ElapsedMilliseconds}ms");
-        sw.Restart();
 
-        // Use data already in memory instead of reloading from disk
         var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
-        Console.WriteLine($"[PERF] Get leaf criteria: {sw.ElapsedMilliseconds}ms, Count: {leaves.Count}");
-        sw.Restart();
-        
         RecomputeWeights();
-        Console.WriteLine($"[PERF] Recompute weights: {sw.ElapsedMilliseconds}ms");
-        sw.Restart();
-        
-        // Group by key to handle duplicates, taking the last value
+
         var existing = (SelectedClass.Assessments ?? new List<Assessment>())
             .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm && a.StudentId != null && a.CriterionId != null)
             .GroupBy(a => (a.StudentId!, a.CriterionId!))
             .ToDictionary(g => g.Key, g => g.Last().Score);
-        Console.WriteLine($"[PERF] Build existing dict: {sw.ElapsedMilliseconds}ms, Count: {existing.Count}");
-        sw.Restart();
 
         int studentCount = SelectedClass.Students.Count;
         var newRows = new List<ScoreRow>(studentCount);
@@ -129,15 +116,26 @@ public partial class GradesViewModel : ReactiveObject
             }
             newRows.Add(row);
         }
-        
-        Console.WriteLine($"[PERF] Create {studentCount} rows in memory: {sw.ElapsedMilliseconds}ms");
-        sw.Restart();
-        
-        // Replace entire collection to avoid individual add notifications
+
         ScoreRows = new ObservableCollection<ScoreRow>(newRows);
-        
-        Console.WriteLine($"[PERF] Replace entire collection: {sw.ElapsedMilliseconds}ms");
-        Console.WriteLine($"[PERF] Total BuildScoreRows: {sw.Elapsed.TotalMilliseconds}ms");
+        SubscribeToRows();
+    }
+
+    void ClearRowSubscriptions()
+    {
+        foreach (var d in rowSubscriptions) d.Dispose();
+        rowSubscriptions.Clear();
+    }
+
+    void SubscribeToRows()
+    {
+        ClearRowSubscriptions();
+        foreach (var row in ScoreRows)
+        {
+            // Mark dirty when any row change occurs (Touch triggers property change)
+            var disp = row.Changed.Subscribe(_ => IsDirty = true);
+            rowSubscriptions.Add(disp);
+        }
     }
 
     public static IEnumerable<Criterion> GetLeafCriteria(IEnumerable<Criterion> nodes)
@@ -167,16 +165,10 @@ public partial class GradesViewModel : ReactiveObject
         }
     }
 
-    public void NotifyScoreEdited()
-    {
-        IsDirty = true;
-    }
-
     async System.Threading.Tasks.Task Save()
     {
         if (SelectedCourse == null || SelectedClass == null) return;
         var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
-        // Remove existing for this term
         var remaining = SelectedClass.Assessments.Where(a => a.Term.GetValueOrDefault(SelectedTerm) != SelectedTerm).ToList();
         var newOnes = new System.Collections.Generic.List<Assessment>();
         foreach (var row in ScoreRows)

@@ -38,7 +38,7 @@
     <!--   </ListBox.ItemTemplate> -->
     <!-- </ListBox> -->
 
-    <slimDataGrid:SlimDataGrid x:Name="ScoresGrid" Grid.Row="1" Grid.Column="1" 
+    <slimDataGrid:SlimDataGrid x:Name="ScoresGrid"
                     ItemsSource="{Binding ScoreRows}"
                     Background="{DynamicResource SystemRegionColor}"
                     BorderBrush="{DynamicResource SystemChromeMediumColor}"

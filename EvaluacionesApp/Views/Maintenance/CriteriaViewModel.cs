@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -18,6 +19,7 @@ public partial class CriteriaViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
     public ReactiveCommand<Unit, Unit> DeleteCriterion { get; }
+    public ReactiveCommand<Unit, Unit> Save { get; }
 
     readonly PersistenceService persistence;
 
@@ -27,6 +29,20 @@ public partial class CriteriaViewModel : ReactiveObject
         AddRootCriterion = ReactiveCommand.Create(DoAddRootCriterion, this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null));
         AddChildCriterion = ReactiveCommand.Create(DoAddChildCriterion, this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null));
         DeleteCriterion = ReactiveCommand.Create(DoDeleteCriterion, this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null));
+        Save = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var root = new Root { Courses = Courses.ToList() };
+            await persistence.Save(root);
+        });
+
+        // Auto-save when the currently selected criterion changes (name/weight), throttled
+        this.WhenAnyValue(x => x.SelectedCriterion)
+            .WhereNotNull()
+            .SelectMany(c => c.WhenAnyValue(x => x.Name, x => x.Weight)
+                               .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+                               .Select(_ => Unit.Default))
+            .InvokeCommand(Save);
+
         Load();
     }
 
@@ -45,8 +61,8 @@ public partial class CriteriaViewModel : ReactiveObject
         var idx = SelectedCourse.Criteria.Count + 1;
         var criterion = new Criterion { Id = $"C{idx}", Name = $"Criterion {idx}", Weight = 1 };
         SelectedCourse.Criteria.Add(criterion);
-        SelectedCriterion = criterion;
-        Save();
+SelectedCriterion = criterion;
+        Save.Execute().Subscribe(_ => { });
     }
 
     void DoAddChildCriterion()
@@ -56,8 +72,8 @@ public partial class CriteriaViewModel : ReactiveObject
         var idx = parent.Children.Count + 1;
         var child = new Criterion { Id = $"{parent.Id}.{idx}", Name = $"Subcriterion {idx}", Weight = 1 };
         parent.Children.Add(child);
-        SelectedCriterion = child;
-        Save();
+SelectedCriterion = child;
+        Save.Execute().Subscribe(_ => { });
     }
 
     void DoDeleteCriterion()
@@ -79,8 +95,8 @@ public partial class CriteriaViewModel : ReactiveObject
         }
         // Remove from tree
         RemoveCriterion(SelectedCourse.Criteria, criterion);
-        SelectedCriterion = null;
-        Save();
+SelectedCriterion = null;
+        Save.Execute().Subscribe(_ => { });
     }
 
     static bool RemoveCriterion(System.Collections.Generic.IList<Criterion> nodes, Criterion toRemove)
@@ -91,17 +107,5 @@ public partial class CriteriaViewModel : ReactiveObject
             if (RemoveCriterion(n.Children, toRemove)) return true;
         }
         return false;
-    }
-
-    async void Save()
-    {
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
-    }
-    
-    public async void SaveCommand()
-    {
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
     }
 }
