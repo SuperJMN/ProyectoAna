@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Avalonia.Data.Converters;
 using EvaluacionesApp.Models;
 using EvaluacionesApp.Views.Grades;
@@ -27,18 +28,38 @@ public class CriterionAggregateConverter : IMultiValueConverter
             return row.Scores.TryGetValue(criterion.Id, out var v) ? v : null;
         }
 
-        double sum = 0;
-        bool any = false;
+        // Weighted sum of children using normalized weights.
+        // Ignore children without value and renormalize to the sum of present weights.
+        var present = new List<(double value, double weight)>();
         foreach (var child in criterion.Children)
         {
             var val = Compute(child, row);
             if (val.HasValue)
             {
-                sum += val.Value;
-                any = true;
+                var w = child.Weight;
+                if (w < 0) w = 0; // no pesos negativos
+                present.Add((val.Value, w));
             }
         }
-        return any ? sum : null;
+
+        if (present.Count == 0)
+        {
+            return null;
+        }
+
+        var weightSum = present.Sum(t => t.weight);
+        if (weightSum <= 0)
+        {
+            // Reparto uniforme si todos los pesos son 0
+            return present.Average(t => t.value);
+        }
+
+        double weighted = 0;
+        foreach (var (value, weight) in present)
+        {
+            weighted += value * (weight / weightSum);
+        }
+        return weighted;
     }
 }
 
