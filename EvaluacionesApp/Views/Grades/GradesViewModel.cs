@@ -23,7 +23,9 @@ public partial class GradesViewModel : ReactiveObject
         get => scoreRows; 
         private set => this.RaiseAndSetIfChanged(ref scoreRows, value); 
     }
-    
+
+    [Reactive] private ScoreRow? selectedScoreRow;
+
     public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
     [Reactive] private int selectedTerm = 1;
 
@@ -118,6 +120,7 @@ public partial class GradesViewModel : ReactiveObject
         }
 
         ScoreRows = new ObservableCollection<ScoreRow>(newRows);
+        SelectedScoreRow = ScoreRows.FirstOrDefault();
         SubscribeToRows();
     }
 
