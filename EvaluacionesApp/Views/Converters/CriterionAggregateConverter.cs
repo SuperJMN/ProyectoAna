@@ -70,3 +70,37 @@ public class NotConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+public class IsLeafConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        // True si la colección está vacía (nodo hoja)
+        if (value is System.Collections.ICollection coll)
+        {
+            return coll.Count == 0;
+        }
+        if (value is System.Collections.IEnumerable en)
+        {
+            var e = en.GetEnumerator();
+            return !e.MoveNext();
+        }
+        return false;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+// Devuelve un ScoreBinding para un par (ScoreRow, Criterion)
+public class RowCriterionToBindingConverter : IMultiValueConverter
+{
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count < 2) return null;
+        var row = values[0] as EvaluacionesApp.Views.Grades.ScoreRow;
+        var criterion = values[1] as EvaluacionesApp.Models.Criterion;
+        if (row == null || criterion == null) return null;
+        return row[criterion.Id];
+    }
+}

@@ -194,10 +194,25 @@ public class ScoreRow : ReactiveObject
 {
     public Student Student { get; }
     private readonly Dictionary<string, double?> scores = new();
+    private readonly Dictionary<string, ScoreBinding> bindings = new();
     private Dictionary<string, double> weights = new();
     private double? cachedTotal;
     
     public Dictionary<string, double?> Scores => scores;
+
+    // Indexer to enable binding from XAML: SelectedScoreRow[Id].Value
+    public ScoreBinding this[string criterionId]
+    {
+        get
+        {
+            if (!bindings.TryGetValue(criterionId, out var binding))
+            {
+                binding = new ScoreBinding(this, criterionId);
+                bindings[criterionId] = binding;
+            }
+            return binding;
+        }
+    }
     
     public double Total
     {
@@ -227,7 +242,34 @@ public class ScoreRow : ReactiveObject
     {
         scores[criterionId] = value;
         Touch();
+        if (bindings.TryGetValue(criterionId, out var binding))
+        {
+            binding.NotifyChanged();
+        }
     }
 
     public ScoreRow(Student student) { Student = student; }
+}
+
+public class ScoreBinding : ReactiveObject
+{
+    private readonly ScoreRow row;
+    private readonly string criterionId;
+
+    public ScoreBinding(ScoreRow row, string criterionId)
+    {
+        this.row = row;
+        this.criterionId = criterionId;
+    }
+
+    public double? Value
+    {
+        get => row.Scores.TryGetValue(criterionId, out var v) ? v : null;
+        set => row.SetScore(criterionId, value);
+    }
+
+    internal void NotifyChanged()
+    {
+        this.RaisePropertyChanged(nameof(Value));
+    }
 }
