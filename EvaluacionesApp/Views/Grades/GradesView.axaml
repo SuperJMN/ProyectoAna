@@ -69,35 +69,36 @@
                 </TextBlock>
                 <TreeView ItemsSource="{Binding SelectedCourse.Criteria}">
                     <TreeView.ItemTemplate>
-            <TreeDataTemplate ItemsSource="{Binding Children}">
-              <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
-                <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <!-- Editor solo en hojas -->
-                  <TextBox x:CompileBindings="False" Width="64"
-                           Watermark="-"
-                           HorizontalAlignment="Right"
-                           IsVisible="{Binding DataContext.Children, ElementName=CritGrid, Converter={StaticResource IsLeaf}}"
-                           Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                    <TextBox.DataContext>
-                      <MultiBinding Converter="{StaticResource RowCritToBinding}">
-                        <Binding ElementName="Root" Path="DataContext.SelectedScoreRow"/>
-                        <Binding ElementName="CritGrid" Path="DataContext" />
-                      </MultiBinding>
-                    </TextBox.DataContext>
-                  </TextBox>
-                  <!-- Valor agregado en nodos con hijos -->
-                  <TextBlock IsVisible="{Binding Children, Converter={StaticResource HasChildren}}">
-                    <TextBlock.Text>
-                      <MultiBinding Converter="{StaticResource CriterionAggregate}">
-                        <Binding />
-                        <Binding ElementName="Root" Path="DataContext.SelectedScoreRow" />
-                      </MultiBinding>
-                    </TextBlock.Text>
-                  </TextBlock>
-                </StackPanel>
-              </Grid>
-            </TreeDataTemplate>
+                        <TreeDataTemplate ItemsSource="{Binding Children}">
+                            <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
+                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <!-- Editor solo en hojas -->
+                                    <TextBox x:CompileBindings="False" Width="64"
+                                             Watermark="-"
+                                             HorizontalAlignment="Right"
+                                             IsVisible="{Binding DataContext.Children, ElementName=CritGrid, Converter={StaticResource IsLeaf}}"
+                                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.DataContext>
+                                            <MultiBinding Converter="{StaticResource RowCritToBinding}">
+                                                <Binding ElementName="Root" Path="DataContext.SelectedScoreRow" />
+                                                <Binding ElementName="CritGrid" Path="DataContext" />
+                                            </MultiBinding>
+                                        </TextBox.DataContext>
+                                    </TextBox>
+                                    <!-- Valor agregado en nodos con hijos -->
+                                    <TextBlock IsVisible="{Binding Children, Converter={StaticResource HasChildren}}">
+                                        <TextBlock.Text>
+                                            <MultiBinding Converter="{StaticResource CriterionAggregate}">
+                                                <Binding />
+                                                <Binding ElementName="Root" Path="DataContext.SelectedScoreRow" />
+                                                <Binding ElementName="Root" Path="DataContext.SelectedScoreRow.Total" />
+                                            </MultiBinding>
+                                        </TextBlock.Text>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+                        </TreeDataTemplate>
                     </TreeView.ItemTemplate>
                 </TreeView>
             </StackPanel>
