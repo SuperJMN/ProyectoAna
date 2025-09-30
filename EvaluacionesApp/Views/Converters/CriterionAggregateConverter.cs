@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Avalonia.Data.Converters;
-using EvaluacionesApp.Models;
+using EvaluacionesApp.Dynamic;
 using EvaluacionesApp.Views.Grades;
 
 namespace EvaluacionesApp.Views.Converters;
@@ -14,18 +14,18 @@ public class CriterionAggregateConverter : IMultiValueConverter
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Count < 2) return string.Empty;
-        var criterion = values[0] as Criterion;
+        var criterion = values[0] as DynamicCriterion;
         var row = values[1] as ScoreRow;
         if (criterion == null || row == null) return string.Empty;
         var result = Compute(criterion, row);
         return result.HasValue ? result.Value.ToString("F2", culture) : string.Empty;
     }
 
-    static double? Compute(Criterion criterion, ScoreRow row)
+    static double? Compute(DynamicCriterion criterion, ScoreRow row)
     {
         if (criterion.Children.Count == 0)
         {
-            return row.Scores.TryGetValue(criterion.Id, out var v) ? v : null;
+            return row.GetScore(criterion.Id);
         }
 
         // Weighted sum of children using normalized weights.
@@ -119,8 +119,8 @@ public class RowCriterionToBindingConverter : IMultiValueConverter
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Count < 2) return null;
-        var row = values[0] as EvaluacionesApp.Views.Grades.ScoreRow;
-        var criterion = values[1] as EvaluacionesApp.Models.Criterion;
+        var row = values[0] as ScoreRow;
+        var criterion = values[1] as DynamicCriterion;
         if (row == null || criterion == null) return null;
         return row[criterion.Id];
     }

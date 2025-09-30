@@ -1,67 +1,153 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Dynamic;
+using System.Threading.Tasks;
 
 namespace EvaluacionesApp.Views.Maintenance;
 
-public partial class StudentsViewModel : ReactiveObject
+public partial class StudentsViewModel : ReactiveObject, IDisposable
 {
-    public ObservableCollection<Course> Courses { get; } = new();
-    [Reactive] private Course? selectedCourse;
-    [Reactive] private Class? selectedClass;
-    [Reactive] private Student? selectedStudent;
+    private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+
+    private readonly DynamicSchoolStore store;
+    private readonly CompositeDisposable anchors = new();
+    private CompositeDisposable? courseAnchors;
+    private CompositeDisposable? classAnchors;
+    private DynamicRoot? root;
+
+    private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+    public ReadOnlyObservableCollection<DynamicCourse> Courses
+    {
+        get => courses;
+        private set => this.RaiseAndSetIfChanged(ref courses, value);
+    }
+
+    [Reactive] private DynamicCourse? selectedCourse;
+    [Reactive] private DynamicClass? selectedClass;
+    [Reactive] private DynamicStudent? selectedStudent;
 
     public ReactiveCommand<Unit, Unit> AddStudent { get; }
     public ReactiveCommand<Unit, Unit> DeleteStudent { get; }
+    public ReactiveCommand<Unit, Unit> Save { get; }
 
-    readonly PersistenceService persistence;
-
-    public StudentsViewModel(PersistenceService persistence)
+    public StudentsViewModel(DynamicSchoolStore store)
     {
-        this.persistence = persistence;
-        AddStudent = ReactiveCommand.Create(DoAddStudent, this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null));
-        DeleteStudent = ReactiveCommand.Create(DoDeleteStudent, this.WhenAnyValue(x => x.SelectedStudent).Select(s => s != null));
-        Load();
+        this.store = store;
+        var canAdd = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
+        var canDelete = this.WhenAnyValue(x => x.SelectedStudent).Select(s => s != null);
+
+        AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
+        DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        _ = Load();
     }
 
-    async void Load()
+    async Task Load()
     {
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses) Courses.Add(c);
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
         SelectedStudent = SelectedClass?.Students.FirstOrDefault();
+
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Subscribe(HandleSelectedCourseChanged)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass)
+            .Subscribe(HandleSelectedClassChanged)
+            .DisposeWith(anchors);
     }
 
-    void DoAddStudent()
+    void HandleSelectedCourseChanged(DynamicCourse? course)
     {
-        if (SelectedClass == null) return;
+        courseAnchors?.Dispose();
+        courseAnchors = null;
+
+        if (course == null)
+        {
+            return;
+        }
+
+        courseAnchors = new CompositeDisposable();
+        course.ClassesChanges
+            .AutoRefresh(c => c.Name)
+            .AutoRefresh(c => c.Id)
+            .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(courseAnchors);
+
+        SelectedClass = course.Classes.FirstOrDefault();
+        SelectedStudent = SelectedClass?.Students.FirstOrDefault();
+    }
+
+    void HandleSelectedClassChanged(DynamicClass? cls)
+    {
+        classAnchors?.Dispose();
+        classAnchors = null;
+
+        if (cls == null)
+        {
+            return;
+        }
+
+        classAnchors = new CompositeDisposable();
+
+        cls.StudentsChanges
+            .AutoRefresh(s => s.Name)
+            .AutoRefresh(s => s.Id)
+            .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(classAnchors);
+
+        SelectedStudent = cls.Students.FirstOrDefault();
+    }
+
+    async Task DoAddStudent()
+    {
+        if (SelectedClass == null)
+        {
+            return;
+        }
+
         var idx = SelectedClass.Students.Count + 1;
-        var student = new Student { Id = $"student-{idx}", Name = $"Student {idx}" };
-        SelectedClass.Students.Add(student);
+        var model = new Models.Student { Id = $"student-{idx}", Name = $"Student {idx}" };
+        var student = SelectedClass.AddStudent(model);
         SelectedStudent = student;
-        Save();
+        await ExecuteSave();
     }
 
-    void DoDeleteStudent()
+    async Task DoDeleteStudent()
     {
-        if (SelectedClass == null || SelectedStudent == null) return;
-        SelectedClass.Students.Remove(SelectedStudent);
-        // Remove assessments for this student
-        SelectedClass.Assessments = SelectedClass.Assessments.Where(a => a.StudentId != SelectedStudent.Id).ToList();
+        if (SelectedClass == null || SelectedStudent == null)
+        {
+            return;
+        }
+
+        SelectedClass.RemoveStudent(SelectedStudent);
         SelectedStudent = null;
-        Save();
+        await ExecuteSave();
     }
 
-    async void Save()
+    async Task ExecuteSave()
     {
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
+        await store.SaveAsync();
+    }
+
+    public void Dispose()
+    {
+        classAnchors?.Dispose();
+        courseAnchors?.Dispose();
+        anchors.Dispose();
     }
 }

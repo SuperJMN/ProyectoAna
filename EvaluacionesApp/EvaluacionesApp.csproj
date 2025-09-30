@@ -40,6 +40,7 @@
     <PackageReference Include="ReactiveUI.Validation" Version="4.1.1" />
     <PackageReference Include="Splat" Version="15.3.1" />
     <PackageReference Include="System.Reactive" Version="6.0.2" />
+    <PackageReference Include="DynamicData" Version="9.3.2" />
     <PackageReference Include="Zafiro.Avalonia" Version="36.0.20" />
     <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="36.0.20" />
     <PackageReference Include="Zafiro.Avalonia.Generators" Version="36.0.20" />

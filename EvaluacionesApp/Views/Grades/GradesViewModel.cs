@@ -2,205 +2,305 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Dynamic;
+using System.Threading.Tasks;
 
 namespace EvaluacionesApp.Views.Grades;
 
-public partial class GradesViewModel : ReactiveObject
+public partial class GradesViewModel : ReactiveObject, IDisposable
 {
-    public ObservableCollection<Course> Courses { get; } = new();
+    private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+    private static readonly ReadOnlyObservableCollection<DynamicCriterion> EmptyCriteria = new(new ObservableCollection<DynamicCriterion>());
 
-    [Reactive] private Course? selectedCourse;
-    [Reactive] private Class? selectedClass;
+    private readonly DynamicSchoolStore store;
+    private readonly CompositeDisposable anchors = new();
+    private CompositeDisposable? courseAnchors;
+    private CompositeDisposable? classAnchors;
+    private IDisposable? leafSubscription;
+    private DynamicRoot? root;
+    private readonly List<IDisposable> rowSubscriptions = new();
 
-    private ObservableCollection<ScoreRow> scoreRows = new();
-    public ObservableCollection<ScoreRow> ScoreRows 
-    { 
-        get => scoreRows; 
-        private set => this.RaiseAndSetIfChanged(ref scoreRows, value); 
+    private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+    public ReadOnlyObservableCollection<DynamicCourse> Courses
+    {
+        get => courses;
+        private set => this.RaiseAndSetIfChanged(ref courses, value);
     }
 
+    [Reactive] private DynamicCourse? selectedCourse;
+    [Reactive] private DynamicClass? selectedClass;
+
+    private ReadOnlyObservableCollection<DynamicCriterion> leafCriteria = EmptyCriteria;
+    public ReadOnlyObservableCollection<DynamicCriterion> LeafCriteria
+    {
+        get => leafCriteria;
+        private set => this.RaiseAndSetIfChanged(ref leafCriteria, value);
+    }
+
+    public ObservableCollection<ScoreRow> ScoreRows { get; } = new();
     [Reactive] private ScoreRow? selectedScoreRow;
 
     public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
     [Reactive] private int selectedTerm = 1;
 
-    readonly PersistenceService persistence;
-    readonly System.Timers.Timer autoSaveTimer;
     [Reactive] private bool isDirty;
-    Dictionary<string, double> weights = new();
 
-    readonly System.Collections.Generic.List<IDisposable> rowSubscriptions = new();
+    public ReactiveCommand<Unit, Unit> Reload { get; }
+    public ReactiveCommand<Unit, Unit> Save { get; }
 
-    public GradesViewModel(PersistenceService persistence)
+    readonly System.Timers.Timer autoSaveTimer;
+
+    private Dictionary<string, double> weights = new();
+
+    public GradesViewModel(DynamicSchoolStore store)
     {
-        this.persistence = persistence;
+        this.store = store;
+
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        Reload = ReactiveCommand.CreateFromTask(DoReload);
 
         autoSaveTimer = new System.Timers.Timer(5000);
         autoSaveTimer.Elapsed += async (_, _) =>
         {
             if (IsDirty)
             {
-                await Save();
+                await ExecuteSave();
                 IsDirty = false;
             }
         };
         autoSaveTimer.Start();
 
-        Load();
-        
-        var trigger = System.Reactive.Linq.Observable.Merge(
-            this.WhenAnyValue(x => x.SelectedCourse).Select(_ => System.Reactive.Unit.Default),
-            this.WhenAnyValue(x => x.SelectedClass).Select(_ => System.Reactive.Unit.Default),
-            this.WhenAnyValue(x => x.SelectedTerm).Select(_ => System.Reactive.Unit.Default));
-        trigger.Subscribe(System.Reactive.Observer.Create<System.Reactive.Unit>(_ => BuildScoreRows()));
+        _ = Load();
+
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Subscribe(HandleSelectedCourseChanged)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass)
+            .Subscribe(HandleSelectedClassChanged)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedTerm)
+            .Subscribe(_ => BuildScoreRows())
+            .DisposeWith(anchors);
     }
 
-    async void Load()
+    async Task Load()
     {
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses)
-            Courses.Add(c);
-
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
     }
 
-    public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> Reload => ReactiveCommand.CreateFromTask(async () =>
+    void HandleSelectedCourseChanged(DynamicCourse? course)
+    {
+        courseAnchors?.Dispose();
+        courseAnchors = null;
+        leafSubscription?.Dispose();
+        leafSubscription = null;
+        LeafCriteria = EmptyCriteria;
+        classAnchors?.Dispose();
+        classAnchors = null;
+
+        if (course == null)
+        {
+            SelectedClass = null;
+            BuildScoreRows();
+            return;
+        }
+
+        courseAnchors = new CompositeDisposable();
+
+        var leafStream = course.LeafCriteria()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Publish()
+            .RefCount();
+
+        leafSubscription = leafStream
+            .Bind(out ReadOnlyObservableCollection<DynamicCriterion> leaves)
+            .Subscribe();
+        LeafCriteria = leaves;
+        courseAnchors.Add(leafSubscription);
+
+        leafStream
+            .Subscribe(_ =>
+            {
+                RecomputeWeights();
+                BuildScoreRows();
+            })
+            .DisposeWith(courseAnchors);
+
+        course.CriteriaChanges
+            .AutoRefresh(c => c.Weight)
+            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(courseAnchors);
+
+        SelectedClass = course.Classes.FirstOrDefault();
+    }
+
+    void HandleSelectedClassChanged(DynamicClass? cls)
+    {
+        classAnchors?.Dispose();
+        classAnchors = null;
+
+        if (cls == null)
+        {
+            BuildScoreRows();
+            return;
+        }
+
+        classAnchors = new CompositeDisposable();
+
+        cls.StudentsChanges
+            .Throttle(TimeSpan.FromMilliseconds(200), RxApp.MainThreadScheduler)
+            .Subscribe(_ => BuildScoreRows())
+            .DisposeWith(classAnchors);
+
+        cls.AssessmentsChanges
+            .AutoRefresh(a => a.Score)
+            .Throttle(TimeSpan.FromMilliseconds(500), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(classAnchors);
+
+        BuildScoreRows();
+    }
+
+    void BuildScoreRows()
+    {
+        foreach (var subscription in rowSubscriptions)
+        {
+            subscription.Dispose();
+        }
+        rowSubscriptions.Clear();
+
+        foreach (var row in ScoreRows.ToList())
+        {
+            row.Dispose();
+        }
+        ScoreRows.Clear();
+
+        if (SelectedClass == null || SelectedCourse == null)
+        {
+            return;
+        }
+
+        var leaves = LeafCriteria.ToList();
+        RecomputeWeights();
+
+        foreach (var student in SelectedClass.Students)
+        {
+            var row = new ScoreRow(SelectedClass, student, leaves, SelectedTerm);
+            row.SetWeights(weights);
+            var disp = row.Changed.Subscribe(_ => IsDirty = true);
+            rowSubscriptions.Add(disp);
+            ScoreRows.Add(row);
+        }
+
+        SelectedScoreRow = ScoreRows.FirstOrDefault();
+
+    }
+
+    void RecomputeWeights()
+    {
+        if (LeafCriteria.Count == 0)
+        {
+            weights = new();
+            return;
+        }
+
+        var total = LeafCriteria.Sum(l => l.Weight);
+        if (total <= 0)
+        {
+            total = 1;
+        }
+
+        weights = LeafCriteria.ToDictionary(l => l.Id, l => l.Weight / total);
+        foreach (var row in ScoreRows)
+        {
+            row.SetWeights(weights);
+        }
+    }
+
+    async Task ExecuteSave()
+    {
+        await store.SaveAsync();
+        IsDirty = false;
+    }
+
+    async Task DoReload()
     {
         var courseId = SelectedCourse?.Id;
         var classId = SelectedClass?.Id;
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses)
-            Courses.Add(c);
+        await store.ReloadAsync();
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = courseId != null ? Courses.FirstOrDefault(c => c.Id == courseId) : Courses.FirstOrDefault();
         SelectedClass = (SelectedCourse != null && classId != null)
             ? SelectedCourse.Classes.FirstOrDefault(cl => cl.Id == classId)
             : SelectedCourse?.Classes.FirstOrDefault();
         BuildScoreRows();
-    });
-
-    void BuildScoreRows()
-    {
-        if (SelectedCourse == null || SelectedClass == null)
-        {
-            if (ScoreRows.Count > 0)
-                ScoreRows = new ObservableCollection<ScoreRow>();
-            ClearRowSubscriptions();
-            return;
-        }
-
-        var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
-        RecomputeWeights();
-
-        var existing = (SelectedClass.Assessments ?? new List<Assessment>())
-            .Where(a => a.Term.GetValueOrDefault(SelectedTerm) == SelectedTerm && a.StudentId != null && a.CriterionId != null)
-            .GroupBy(a => (a.StudentId!, a.CriterionId!))
-            .ToDictionary(g => g.Key, g => g.Last().Score);
-
-        int studentCount = SelectedClass.Students.Count;
-        var newRows = new List<ScoreRow>(studentCount);
-        
-        foreach (var student in SelectedClass.Students)
-        {
-            var row = new ScoreRow(student);
-            row.SetWeights(weights);
-            foreach (var leaf in leaves)
-            {
-                var key = (student.Id, leaf.Id);
-                row.Scores[leaf.Id] = existing.TryGetValue(key, out var v) ? v : null;
-            }
-            newRows.Add(row);
-        }
-
-        ScoreRows = new ObservableCollection<ScoreRow>(newRows);
-        SelectedScoreRow = ScoreRows.FirstOrDefault();
-        SubscribeToRows();
     }
 
-    void ClearRowSubscriptions()
+    public void Dispose()
     {
-        foreach (var d in rowSubscriptions) d.Dispose();
+        foreach (var subscription in rowSubscriptions)
+        {
+            subscription.Dispose();
+        }
         rowSubscriptions.Clear();
-    }
 
-    void SubscribeToRows()
-    {
-        ClearRowSubscriptions();
         foreach (var row in ScoreRows)
         {
-            // Mark dirty when any row change occurs (Touch triggers property change)
-            var disp = row.Changed.Subscribe(_ => IsDirty = true);
-            rowSubscriptions.Add(disp);
+            row.Dispose();
         }
-    }
+        ScoreRows.Clear();
 
-    public static IEnumerable<Criterion> GetLeafCriteria(IEnumerable<Criterion> nodes)
-    {
-        foreach (var n in nodes)
-        {
-            if (n.Children.Count == 0) yield return n;
-            else foreach (var c in GetLeafCriteria(n.Children)) yield return c;
-        }
-    }
-
-    public void RecomputeWeights()
-    {
-        if (SelectedCourse == null)
-        {
-            weights = new();
-            return;
-        }
-        var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
-        var total = leaves.Sum(l => l.Weight);
-        if (total <= 0) total = 1;
-        weights = leaves.ToDictionary(l => l.Id, l => (l.Weight / total));
-        foreach (var row in ScoreRows)
-        {
-            row.SetWeights(weights);
-            row.Touch();
-        }
-    }
-
-    async System.Threading.Tasks.Task Save()
-    {
-        if (SelectedCourse == null || SelectedClass == null) return;
-        var leaves = GetLeafCriteria(SelectedCourse.Criteria).ToList();
-        var remaining = SelectedClass.Assessments.Where(a => a.Term.GetValueOrDefault(SelectedTerm) != SelectedTerm).ToList();
-        var newOnes = new System.Collections.Generic.List<Assessment>();
-        foreach (var row in ScoreRows)
-        {
-            foreach (var leaf in leaves)
-            {
-                if (row.Scores.TryGetValue(leaf.Id, out var v) && v.HasValue)
-                {
-                    newOnes.Add(new Assessment { StudentId = row.Student.Id, CriterionId = leaf.Id, Term = SelectedTerm, Score = v.Value });
-                }
-            }
-        }
-        SelectedClass.Assessments = remaining.Concat(newOnes).ToList();
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
+        classAnchors?.Dispose();
+        courseAnchors?.Dispose();
+        leafSubscription?.Dispose();
+        anchors.Dispose();
+        autoSaveTimer.Dispose();
     }
 }
 
-public class ScoreRow : ReactiveObject
+public class ScoreRow : ReactiveObject, IDisposable
 {
-    public Student Student { get; }
-    private readonly Dictionary<string, double?> scores = new();
+    private readonly DynamicClass cls;
+    private readonly Dictionary<string, DynamicAssessment> assessments = new();
     private readonly Dictionary<string, ScoreBinding> bindings = new();
+    private readonly CompositeDisposable subscriptions = new();
     private Dictionary<string, double> weights = new();
     private double? cachedTotal;
-    
-    public Dictionary<string, double?> Scores => scores;
 
-    // Indexer to enable binding from XAML: SelectedScoreRow[Id].Value
+    public ScoreRow(DynamicClass cls, DynamicStudent student, IEnumerable<DynamicCriterion> criteria, int term)
+    {
+        this.cls = cls;
+        Student = student;
+        Term = term;
+
+        foreach (var criterion in criteria)
+        {
+            var assessment = cls.GetOrCreateAssessment(student.Id, criterion.Id, term);
+            assessments[criterion.Id] = assessment;
+            RegisterAssessment(criterion.Id, assessment);
+        }
+    }
+
+    public DynamicStudent Student { get; }
+
+    public int Term { get; }
+
     public ScoreBinding this[string criterionId]
     {
         get
@@ -213,15 +313,40 @@ public class ScoreRow : ReactiveObject
             return binding;
         }
     }
-    
+
+    internal double? GetScore(string criterionId)
+    {
+        return assessments.TryGetValue(criterionId, out var assessment) ? assessment.Score : null;
+    }
+
+    internal void SetScore(string criterionId, double? value)
+    {
+        if (assessments.TryGetValue(criterionId, out var assessment))
+        {
+            assessment.Score = value;
+        }
+    }
+
+    void RegisterAssessment(string criterionId, DynamicAssessment assessment)
+    {
+        var disp = assessment.WhenAnyValue(a => a.Score)
+            .Subscribe(_ =>
+            {
+                cachedTotal = null;
+                this.RaisePropertyChanged(nameof(Total));
+                if (bindings.TryGetValue(criterionId, out var binding))
+                {
+                    binding.NotifyChanged();
+                }
+            });
+        subscriptions.Add(disp);
+    }
+
     public double Total
     {
         get
         {
-            if (!cachedTotal.HasValue)
-            {
-                cachedTotal = scores.Sum(kv => (kv.Value ?? 0) * (weights.TryGetValue(kv.Key, out var w) ? w : 0));
-            }
+            cachedTotal ??= assessments.Sum(kv => (kv.Value.Score ?? 0) * weights.GetValueOrDefault(kv.Key));
             return cachedTotal.Value;
         }
     }
@@ -230,25 +355,13 @@ public class ScoreRow : ReactiveObject
     {
         weights = map;
         cachedTotal = null;
-    }
-    
-    public void Touch()
-    {
-        cachedTotal = null;
         this.RaisePropertyChanged(nameof(Total));
     }
-    
-    public void SetScore(string criterionId, double? value)
-    {
-        scores[criterionId] = value;
-        Touch();
-        if (bindings.TryGetValue(criterionId, out var binding))
-        {
-            binding.NotifyChanged();
-        }
-    }
 
-    public ScoreRow(Student student) { Student = student; }
+    public void Dispose()
+    {
+        subscriptions.Dispose();
+    }
 }
 
 public class ScoreBinding : ReactiveObject
@@ -264,7 +377,7 @@ public class ScoreBinding : ReactiveObject
 
     public double? Value
     {
-        get => row.Scores.TryGetValue(criterionId, out var v) ? v : null;
+        get => row.GetScore(criterionId);
         set => row.SetScore(criterionId, value);
     }
 

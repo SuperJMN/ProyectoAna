@@ -10,6 +10,7 @@ using Zafiro.Avalonia.Services;
 using Zafiro.UI;
 using Zafiro.UI.Navigation;
 using Zafiro.UI.Shell;
+using EvaluacionesApp.Dynamic;
 
 namespace EvaluacionesApp.Shell;
 
@@ -31,6 +32,7 @@ public static class CompositionRoot
 
         // Application services
         services.AddSingleton<Services.PersistenceService>();
+        services.AddSingleton<DynamicSchoolStore>();
 
         // VMs
         services.AddTransient<Views.Grades.GradesViewModel>();

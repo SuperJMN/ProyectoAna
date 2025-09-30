@@ -1,53 +1,106 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Dynamic;
+using System.Threading.Tasks;
 
 namespace EvaluacionesApp.Views.Maintenance;
 
-public partial class ClassesViewModel : ReactiveObject
+public partial class ClassesViewModel : ReactiveObject, IDisposable
 {
-    public ObservableCollection<Course> Courses { get; } = new();
-    [Reactive] private Course? selectedCourse;
-    [Reactive] private Class? selectedClass;
+    private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+
+    private readonly DynamicSchoolStore store;
+    private readonly CompositeDisposable anchors = new();
+    private CompositeDisposable? courseAnchors;
+    private DynamicRoot? root;
+
+    private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+    public ReadOnlyObservableCollection<DynamicCourse> Courses
+    {
+        get => courses;
+        private set => this.RaiseAndSetIfChanged(ref courses, value);
+    }
+
+    [Reactive] private DynamicCourse? selectedCourse;
+    [Reactive] private DynamicClass? selectedClass;
 
     public ReactiveCommand<Unit, Unit> AddClass { get; }
+    public ReactiveCommand<Unit, Unit> Save { get; }
 
-    readonly PersistenceService persistence;
-
-    public ClassesViewModel(PersistenceService persistence)
+    public ClassesViewModel(DynamicSchoolStore store)
     {
-        this.persistence = persistence;
-        AddClass = ReactiveCommand.Create(DoAddClass, this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null));
-        Load();
+        this.store = store;
+        var canAdd = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
+        AddClass = ReactiveCommand.CreateFromTask(DoAddClass, canAdd);
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        _ = Load();
     }
 
-    async void Load()
+    async Task Load()
     {
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses) Courses.Add(c);
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
+
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Subscribe(HandleSelectedCourseChanged)
+            .DisposeWith(anchors);
     }
 
-    void DoAddClass()
+    void HandleSelectedCourseChanged(DynamicCourse? course)
     {
-        if (SelectedCourse == null) return;
+        courseAnchors?.Dispose();
+        courseAnchors = null;
+
+        if (course == null)
+        {
+            return;
+        }
+
+        courseAnchors = new CompositeDisposable();
+
+        course.ClassesChanges
+            .AutoRefresh(c => c.Name)
+            .AutoRefresh(c => c.Id)
+            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(courseAnchors);
+
+        SelectedClass = course.Classes.FirstOrDefault();
+    }
+
+    async Task DoAddClass()
+    {
+        if (SelectedCourse == null)
+        {
+            return;
+        }
+
         var idx = SelectedCourse.Classes.Count + 1;
-        var cls = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class {idx}" };
-        SelectedCourse.Classes.Add(cls);
+        var model = new Models.Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class {idx}" };
+        var cls = SelectedCourse.AddClass(model);
         SelectedClass = cls;
-        Save();
+        await ExecuteSave();
     }
 
-    async void Save()
+    async Task ExecuteSave()
     {
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
+        await store.SaveAsync();
+    }
+
+    public void Dispose()
+    {
+        courseAnchors?.Dispose();
+        anchors.Dispose();
     }
 }

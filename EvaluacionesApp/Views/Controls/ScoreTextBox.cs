@@ -50,18 +50,10 @@ public class ScoreTextBox : TextBox
     void UpdateFromRow()
     {
         if (Row == null || string.IsNullOrEmpty(CriterionId)) return;
-        if (Row.Scores.TryGetValue(CriterionId!, out var score))
-        {
-            isUpdating = true;
-            Text = score?.ToString() ?? string.Empty;
-            isUpdating = false;
-        }
-        else
-        {
-            isUpdating = true;
-            Text = string.Empty;
-            isUpdating = false;
-        }
+        var score = Row.GetScore(CriterionId!);
+        isUpdating = true;
+        Text = score?.ToString() ?? string.Empty;
+        isUpdating = false;
     }
 
     void Commit()

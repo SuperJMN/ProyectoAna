@@ -1,48 +1,77 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Threading.Tasks;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Dynamic;
 
 namespace EvaluacionesApp.Views.Maintenance;
 
-public partial class CoursesViewModel : ReactiveObject
+public partial class CoursesViewModel : ReactiveObject, IDisposable
 {
-    public ObservableCollection<Course> Courses { get; } = new();
-    [Reactive] private Course? selectedCourse;
+    private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+
+    private readonly DynamicSchoolStore store;
+    private readonly CompositeDisposable anchors = new();
+    private DynamicRoot? root;
+
+    private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+    public ReadOnlyObservableCollection<DynamicCourse> Courses
+    {
+        get => courses;
+        private set => this.RaiseAndSetIfChanged(ref courses, value);
+    }
+
+    [Reactive] private DynamicCourse? selectedCourse;
 
     public ReactiveCommand<Unit, Unit> AddCourse { get; }
+    public ReactiveCommand<Unit, Unit> Save { get; }
 
-    readonly PersistenceService persistence;
-
-    public CoursesViewModel(PersistenceService persistence)
+    public CoursesViewModel(DynamicSchoolStore store)
     {
-        this.persistence = persistence;
-        AddCourse = ReactiveCommand.Create(DoAddCourse);
-        Load();
+        this.store = store;
+        AddCourse = ReactiveCommand.CreateFromTask(DoAddCourse);
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        _ = Load();
     }
 
-    async void Load()
+    async Task Load()
     {
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses) Courses.Add(c);
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
+
+        root.CoursesChanges
+            .AutoRefresh(c => c.Name)
+            .AutoRefresh(c => c.Id)
+            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(anchors);
     }
 
-    void DoAddCourse()
+    async Task DoAddCourse()
     {
-        var idx = Courses.Count + 1;
-        Courses.Add(new Course { Id = $"course-{idx}", Name = $"Course {idx}" });
-        SelectedCourse = Courses.Last();
-        Save();
+        var targetRoot = await store.GetRoot();
+        var idx = targetRoot.Courses.Count + 1;
+        var course = targetRoot.AddCourse(new Models.Course { Id = $"course-{idx}", Name = $"Course {idx}" });
+        SelectedCourse = course;
+        await ExecuteSave();
     }
 
-    async void Save()
+    async Task ExecuteSave()
     {
-        var root = new Root { Courses = Courses.ToList() };
-        await persistence.Save(root);
+        await store.SaveAsync();
+    }
+
+    public void Dispose()
+    {
+        anchors.Dispose();
     }
 }

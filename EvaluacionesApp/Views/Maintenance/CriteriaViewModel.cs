@@ -2,90 +2,133 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
+using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Dynamic;
+using System.Threading.Tasks;
 
 namespace EvaluacionesApp.Views.Maintenance;
 
-public partial class CriteriaViewModel : ReactiveObject
+public partial class CriteriaViewModel : ReactiveObject, IDisposable
 {
-    public ObservableCollection<Course> Courses { get; } = new();
-    [Reactive] private Course? selectedCourse;
-    [Reactive] private Criterion? selectedCriterion;
+    private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+
+    private readonly DynamicSchoolStore store;
+    private readonly CompositeDisposable anchors = new();
+    private CompositeDisposable? courseAnchors;
+    private DynamicRoot? root;
+
+    private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+    public ReadOnlyObservableCollection<DynamicCourse> Courses
+    {
+        get => courses;
+        private set => this.RaiseAndSetIfChanged(ref courses, value);
+    }
+
+    [Reactive] private DynamicCourse? selectedCourse;
+    [Reactive] private DynamicCriterion? selectedCriterion;
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
     public ReactiveCommand<Unit, Unit> DeleteCriterion { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
 
-    readonly PersistenceService persistence;
-
-    public CriteriaViewModel(PersistenceService persistence)
+    public CriteriaViewModel(DynamicSchoolStore store)
     {
-        this.persistence = persistence;
-        AddRootCriterion = ReactiveCommand.Create(DoAddRootCriterion, this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null));
-        AddChildCriterion = ReactiveCommand.Create(DoAddChildCriterion, this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null));
-        DeleteCriterion = ReactiveCommand.Create(DoDeleteCriterion, this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null));
-        Save = ReactiveCommand.CreateFromTask(async () =>
-        {
-            var root = new Root { Courses = Courses.ToList() };
-            await persistence.Save(root);
-        });
+        this.store = store;
+        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
+        var hasCriterion = this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null);
 
-        // Auto-save when the currently selected criterion changes (name/weight), throttled
-        this.WhenAnyValue(x => x.SelectedCriterion)
-            .WhereNotNull()
-            .SelectMany(c => c.WhenAnyValue(x => x.Name, x => x.Weight)
-                               .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
-                               .Select(_ => Unit.Default))
-            .InvokeCommand(Save);
-
-        Load();
+        AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
+        AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
+        DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, hasCriterion);
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        _ = Load();
     }
 
-    async void Load()
+    async Task Load()
     {
-        var root = await persistence.Load();
-        Courses.Clear();
-        foreach (var c in root.Courses) Courses.Add(c);
+        root = await store.GetRoot();
+        Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
         SelectedCriterion = SelectedCourse?.Criteria.FirstOrDefault();
+
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Subscribe(HandleSelectedCourseChanged)
+            .DisposeWith(anchors);
     }
 
-    void DoAddRootCriterion()
+    void HandleSelectedCourseChanged(DynamicCourse? course)
     {
-        if (SelectedCourse == null) return;
+        courseAnchors?.Dispose();
+        courseAnchors = null;
+
+        if (course == null)
+        {
+            return;
+        }
+
+        courseAnchors = new CompositeDisposable();
+
+        course.CriteriaChanges
+            .MergeManyChangeSets(c => c.SelfAndDescendants())
+            .AutoRefresh(c => c.Name)
+            .AutoRefresh(c => c.Weight)
+            .AutoRefresh(c => c.Id)
+            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+            .Select(_ => Unit.Default)
+            .InvokeCommand(Save)
+            .DisposeWith(courseAnchors);
+
+        SelectedCriterion = course.Criteria.FirstOrDefault();
+    }
+
+    async Task DoAddRootCriterion()
+    {
+        if (SelectedCourse == null)
+        {
+            return;
+        }
+
         var idx = SelectedCourse.Criteria.Count + 1;
-        var criterion = new Criterion { Id = $"C{idx}", Name = $"Criterion {idx}", Weight = 1 };
-        SelectedCourse.Criteria.Add(criterion);
-SelectedCriterion = criterion;
-        Save.Execute().Subscribe(_ => { });
+        var model = new Models.Criterion { Id = $"C{idx}", Name = $"Criterion {idx}", Weight = 1 };
+        var criterion = SelectedCourse.AddCriterion(model);
+        SelectedCriterion = criterion;
+        await ExecuteSave();
     }
 
-    void DoAddChildCriterion()
+    async Task DoAddChildCriterion()
     {
-        if (SelectedCriterion == null) return;
+        if (SelectedCriterion == null)
+        {
+            return;
+        }
+
         var parent = SelectedCriterion;
         var idx = parent.Children.Count + 1;
-        var child = new Criterion { Id = $"{parent.Id}.{idx}", Name = $"Subcriterion {idx}", Weight = 1 };
-        parent.Children.Add(child);
-SelectedCriterion = child;
-        Save.Execute().Subscribe(_ => { });
+        var model = new Models.Criterion { Id = $"{parent.Id}.{idx}", Name = $"Subcriterion {idx}", Weight = 1 };
+        var child = parent.AddChild(model);
+        SelectedCriterion = child;
+        await ExecuteSave();
     }
 
-    void DoDeleteCriterion()
+    async Task DoDeleteCriterion()
     {
-        if (SelectedCourse == null || SelectedCriterion == null) return;
+        if (SelectedCourse == null || SelectedCriterion == null)
+        {
+            return;
+        }
+
         var criterion = SelectedCriterion;
         if (criterion.Children.Any())
         {
-            // Cannot delete if has children
             return;
         }
-        // Cannot delete if any class has assessments for this criterion
+
         var hasAssessments = SelectedCourse.Classes
             .SelectMany(c => c.Assessments)
             .Any(a => a.CriterionId == criterion.Id);
@@ -93,19 +136,27 @@ SelectedCriterion = child;
         {
             return;
         }
-        // Remove from tree
-        RemoveCriterion(SelectedCourse.Criteria, criterion);
-SelectedCriterion = null;
-        Save.Execute().Subscribe(_ => { });
+
+        if (criterion.Parent != null)
+        {
+            criterion.Parent.RemoveChild(criterion);
+        }
+        else
+        {
+            SelectedCourse.RemoveCriterion(criterion);
+        }
+        SelectedCriterion = null;
+        await ExecuteSave();
     }
 
-    static bool RemoveCriterion(System.Collections.Generic.IList<Criterion> nodes, Criterion toRemove)
+    async Task ExecuteSave()
     {
-        if (nodes.Remove(toRemove)) return true;
-        foreach (var n in nodes.ToList())
-        {
-            if (RemoveCriterion(n.Children, toRemove)) return true;
-        }
-        return false;
+        await store.SaveAsync();
+    }
+
+    public void Dispose()
+    {
+        courseAnchors?.Dispose();
+        anchors.Dispose();
     }
 }
