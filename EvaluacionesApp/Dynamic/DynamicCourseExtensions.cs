@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using DynamicData;
 using DynamicData.Binding;
 
@@ -17,5 +19,14 @@ public static class DynamicCourseExtensions
             .MergeManyChangeSets(criterion => criterion.SelfAndDescendants())
             .AutoRefresh(c => c.IsLeaf)
             .Filter(c => c.IsLeaf);
+    }
+
+    public static IEnumerable<DynamicCriterion> EnumerateLeafCriteria(this DynamicCourse course)
+    {
+        ArgumentNullException.ThrowIfNull(course);
+
+        return course.Criteria
+            .SelectMany(criterion => criterion.EnumerateSelfAndDescendants())
+            .Where(criterion => criterion.IsLeaf);
     }
 }
