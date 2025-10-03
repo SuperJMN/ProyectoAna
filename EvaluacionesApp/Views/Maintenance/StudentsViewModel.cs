@@ -121,7 +121,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         }
 
         var idx = SelectedClass.Students.Count + 1;
-        var model = new Models.Student { Id = $"student-{idx}", Name = $"Student {idx}" };
+        var id = Guid.NewGuid().ToString();
+        var model = new Models.Student { Id = id, Name = $"Student {idx}" };
         var student = SelectedClass.AddStudent(model);
         SelectedStudent = student;
         await ExecuteSave();

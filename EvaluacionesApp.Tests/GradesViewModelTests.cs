@@ -55,12 +55,13 @@ public class GradesViewModelTests
         Pump(scheduler);
 
         var cls = viewModel.SelectedClass!;
-        cls.AddStudent(new Student { Id = "student-3", Name = "Student 3" });
+        var newStudentId = Guid.NewGuid().ToString();
+        cls.AddStudent(new Student { Id = newStudentId, Name = "Student 3" });
 
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(250).Ticks);
         Pump(scheduler);
 
-        Assert.Contains(viewModel.ScoreRows, row => row.Student.Id == "student-3");
+        Assert.Contains(viewModel.ScoreRows, row => row.Student.Id == newStudentId);
     }
 
     [Fact]
@@ -155,8 +156,8 @@ public class GradesViewModelTests
                             Name = "Class 1A",
                             Students =
                             [
-                                new Student { Id = "student-1", Name = "Student 1" },
-                                new Student { Id = "student-2", Name = "Student 2" }
+                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 1" },
+                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 2" }
                             ],
                             Assessments = new List<Assessment>()
                         }
@@ -179,7 +180,7 @@ public class GradesViewModelTests
                             Name = "Class 2A",
                             Students =
                             [
-                                new Student { Id = "student-4", Name = "Student 4" }
+                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 4" }
                             ],
                             Assessments = new List<Assessment>()
                         }
