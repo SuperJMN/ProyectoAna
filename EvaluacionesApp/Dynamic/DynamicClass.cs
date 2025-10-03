@@ -11,19 +11,17 @@ namespace EvaluacionesApp.Dynamic;
 
 public class DynamicClass : ReactiveObject, IDisposable
 {
-    private readonly DynamicCourse owner;
     private readonly SourceCache<DynamicStudent, string> studentsCache = new(student => student.Id);
     private readonly SourceCache<DynamicAssessment, AssessmentKey> assessmentsCache = new(assessment => assessment.Key);
     private readonly CompositeDisposable anchors = new();
-    private readonly Dictionary<DynamicStudent, IDisposable> studentSubscriptions = new();
     private readonly Dictionary<DynamicAssessment, IDisposable> assessmentSubscriptions = new();
 
-    private string id;
+    private readonly string id;
     private string name;
 
     public DynamicClass(Class model, DynamicCourse owner)
     {
-        this.owner = owner;
+        ArgumentNullException.ThrowIfNull(owner);
         id = model.Id;
         name = model.Name;
 
@@ -46,7 +44,6 @@ public class DynamicClass : ReactiveObject, IDisposable
         foreach (var s in model.Students)
         {
             var student = new DynamicStudent(s);
-            RegisterStudent(student);
             studentsCache.AddOrUpdate(student);
         }
 
@@ -58,20 +55,7 @@ public class DynamicClass : ReactiveObject, IDisposable
         }
     }
 
-    public string Id
-    {
-        get => id;
-        set
-        {
-            if (value == id)
-            {
-                return;
-            }
-            var previous = id;
-            this.RaiseAndSetIfChanged(ref id, value);
-            IdChanged?.Invoke(this, previous);
-        }
-    }
+    public string Id => id;
 
     public string Name
     {
@@ -89,22 +73,15 @@ public class DynamicClass : ReactiveObject, IDisposable
 
     public int StudentCount => Students.Count;
 
-    public event Action<DynamicClass, string>? IdChanged;
-
     public DynamicStudent AddStudent(Student model)
     {
         var student = new DynamicStudent(model);
-        RegisterStudent(student);
         studentsCache.AddOrUpdate(student);
         return student;
     }
 
     public void RemoveStudent(DynamicStudent student)
     {
-        if (studentSubscriptions.Remove(student, out var disposable))
-        {
-            disposable.Dispose();
-        }
         studentsCache.RemoveKey(student.Id);
         // Remove assessments referencing this student
         var toRemove = Assessments.Where(a => a.StudentId == student.Id).ToList();
@@ -137,22 +114,6 @@ public class DynamicClass : ReactiveObject, IDisposable
         assessmentsCache.RemoveKey(assessment.Key);
     }
 
-    internal void UpdateAssessmentsForStudent(string previousStudentId, string newStudentId)
-    {
-        foreach (var assessment in Assessments.Where(a => a.StudentId == previousStudentId).ToList())
-        {
-            assessment.SetStudentId(newStudentId);
-        }
-    }
-
-    internal void UpdateAssessmentsForCriterion(string previousCriterionId, string newCriterionId)
-    {
-        foreach (var assessment in Assessments.Where(a => a.CriterionId == previousCriterionId).ToList())
-        {
-            assessment.SetCriterionId(newCriterionId);
-        }
-    }
-
     public Class ToDomain()
     {
         return new Class
@@ -162,22 +123,6 @@ public class DynamicClass : ReactiveObject, IDisposable
             Students = Students.Select(s => s.ToDomain()).ToList(),
             Assessments = Assessments.Select(a => a.ToDomain()).ToList()
         };
-    }
-
-    private void RegisterStudent(DynamicStudent student)
-    {
-        void Handler(DynamicStudent sender, string previousId)
-        {
-            studentsCache.Edit(cache =>
-            {
-                cache.RemoveKey(previousId);
-                cache.AddOrUpdate(sender);
-            });
-            UpdateAssessmentsForStudent(previousId, sender.Id);
-        }
-
-        student.IdChanged += Handler;
-        studentSubscriptions[student] = Disposable.Create(() => student.IdChanged -= Handler);
     }
 
     private void RegisterAssessment(DynamicAssessment assessment)
@@ -197,12 +142,6 @@ public class DynamicClass : ReactiveObject, IDisposable
 
     public void Dispose()
     {
-        foreach (var subscription in studentSubscriptions.Values)
-        {
-            subscription.Dispose();
-        }
-        studentSubscriptions.Clear();
-
         foreach (var subscription in assessmentSubscriptions.Values)
         {
             subscription.Dispose();

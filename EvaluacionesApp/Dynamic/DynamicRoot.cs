@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -13,8 +12,6 @@ public class DynamicRoot : ReactiveObject, IDisposable
 {
     private readonly SourceCache<DynamicCourse, string> coursesCache = new(course => course.Id);
     private readonly CompositeDisposable anchors = new();
-    private readonly Dictionary<DynamicCourse, IDisposable> courseSubscriptions = new();
-
     private string version;
 
     public DynamicRoot(Root root)
@@ -30,7 +27,6 @@ public class DynamicRoot : ReactiveObject, IDisposable
         foreach (var course in root.Courses)
         {
             var dynamicCourse = new DynamicCourse(course, this);
-            RegisterCourse(dynamicCourse);
             coursesCache.AddOrUpdate(dynamicCourse);
         }
     }
@@ -48,28 +44,14 @@ public class DynamicRoot : ReactiveObject, IDisposable
     public DynamicCourse AddCourse(Course model)
     {
         var course = new DynamicCourse(model, this);
-        RegisterCourse(course);
         coursesCache.AddOrUpdate(course);
         return course;
     }
 
     public void RemoveCourse(DynamicCourse course)
     {
-        if (courseSubscriptions.Remove(course, out var disposer))
-        {
-            disposer.Dispose();
-        }
         coursesCache.RemoveKey(course.Id);
         course.Dispose();
-    }
-
-    internal void OnCourseIdChanged(DynamicCourse course, string previousId)
-    {
-        coursesCache.Edit(cache =>
-        {
-            cache.RemoveKey(previousId);
-            cache.AddOrUpdate(course);
-        });
     }
 
     public Root ToDomain()
@@ -81,25 +63,8 @@ public class DynamicRoot : ReactiveObject, IDisposable
         };
     }
 
-    private void RegisterCourse(DynamicCourse course)
-    {
-        void Handler(DynamicCourse sender, string previous)
-        {
-            OnCourseIdChanged(sender, previous);
-        }
-
-        course.IdChanged += Handler;
-        courseSubscriptions[course] = Disposable.Create(() => course.IdChanged -= Handler);
-    }
-
     public void Dispose()
     {
-        foreach (var subscription in courseSubscriptions.Values)
-        {
-            subscription.Dispose();
-        }
-        courseSubscriptions.Clear();
-
         foreach (var course in Courses.ToList())
         {
             course.Dispose();

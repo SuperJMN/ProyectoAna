@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -15,9 +14,7 @@ public class DynamicCriterion : ReactiveObject, IDisposable
     private readonly DynamicCriterion? parent;
     private readonly SourceCache<DynamicCriterion, string> childrenCache = new(child => child.Id);
     private readonly CompositeDisposable anchors = new();
-    private readonly Dictionary<DynamicCriterion, IDisposable> childSubscriptions = new();
-
-    private string id;
+    private readonly string id;
     private string name;
     private double weight;
 
@@ -42,26 +39,11 @@ public class DynamicCriterion : ReactiveObject, IDisposable
         foreach (var child in model.Children)
         {
             var dynamicChild = new DynamicCriterion(child, course, this);
-            RegisterChild(dynamicChild);
             childrenCache.AddOrUpdate(dynamicChild);
         }
     }
 
-    public string Id
-    {
-        get => id;
-        set
-        {
-            if (value == id)
-            {
-                return;
-            }
-            var previous = id;
-            this.RaiseAndSetIfChanged(ref id, value);
-            IdChanged?.Invoke(this, previous);
-            course.OnCriterionIdChanged(this, previous);
-        }
-    }
+    public string Id => id;
 
     public string Name
     {
@@ -83,22 +65,15 @@ public class DynamicCriterion : ReactiveObject, IDisposable
 
     public IObservable<IChangeSet<DynamicCriterion, string>> ChildrenChanges => childrenCache.Connect();
 
-    public event Action<DynamicCriterion, string>? IdChanged;
-
     public DynamicCriterion AddChild(Criterion model)
     {
         var child = new DynamicCriterion(model, course, this);
-        RegisterChild(child);
         childrenCache.AddOrUpdate(child);
         return child;
     }
 
     public void RemoveChild(DynamicCriterion child)
     {
-        if (childSubscriptions.Remove(child, out var disposable))
-        {
-            disposable.Dispose();
-        }
         childrenCache.RemoveKey(child.Id);
         child.Dispose();
     }
@@ -114,29 +89,8 @@ public class DynamicCriterion : ReactiveObject, IDisposable
         };
     }
 
-    private void RegisterChild(DynamicCriterion child)
-    {
-        void Handler(DynamicCriterion sender, string previousId)
-        {
-            childrenCache.Edit(cache =>
-            {
-                cache.RemoveKey(previousId);
-                cache.AddOrUpdate(sender);
-            });
-        }
-
-        child.IdChanged += Handler;
-        childSubscriptions[child] = Disposable.Create(() => child.IdChanged -= Handler);
-    }
-
     public void Dispose()
     {
-        foreach (var subscription in childSubscriptions.Values)
-        {
-            subscription.Dispose();
-        }
-        childSubscriptions.Clear();
-
         foreach (var child in Children.ToList())
         {
             child.Dispose();
