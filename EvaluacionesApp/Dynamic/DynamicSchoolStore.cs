@@ -6,7 +6,7 @@ using EvaluacionesApp.Services;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicSchoolStore : IDisposable
+public class DynamicSchoolStore : IDynamicSchoolStore
 {
     private readonly PersistenceService persistenceService;
     private readonly SemaphoreSlim gate = new(1, 1);
