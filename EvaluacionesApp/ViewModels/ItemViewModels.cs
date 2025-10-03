@@ -92,13 +92,25 @@ public partial class StudentVm : ViewModelBase
     [Reactive]
     private string name = string.Empty;
 
+    private int positivos;
+
+    private int negativos;
+
+    private string observaciones = string.Empty;
+
     public StudentVm(Student model)
     {
         Model = model;
         id = model.Id;
         name = model.Name;
+        positivos = Math.Max(0, model.Positivos);
+        negativos = Math.Max(0, model.Negativos);
+        observaciones = model.Observaciones ?? string.Empty;
         this.WhenAnyValue(x => x.Name).Subscribe(v => Model.Name = v);
         this.WhenAnyValue(x => x.Id).Subscribe(v => Model.Id = v);
+        this.WhenAnyValue(x => x.Positivos).Subscribe(v => Model.Positivos = v);
+        this.WhenAnyValue(x => x.Negativos).Subscribe(v => Model.Negativos = v);
+        this.WhenAnyValue(x => x.Observaciones).Subscribe(v => Model.Observaciones = v);
     }
 
 
@@ -106,7 +118,28 @@ public partial class StudentVm : ViewModelBase
     {
         Model.Name = Name;
         Model.Id = Id;
+        Model.Positivos = Positivos;
+        Model.Negativos = Negativos;
+        Model.Observaciones = Observaciones;
         return Model;
+    }
+
+    public int Positivos
+    {
+        get => positivos;
+        set => this.RaiseAndSetIfChanged(ref positivos, Math.Max(0, value));
+    }
+
+    public int Negativos
+    {
+        get => negativos;
+        set => this.RaiseAndSetIfChanged(ref negativos, Math.Max(0, value));
+    }
+
+    public string Observaciones
+    {
+        get => observaciones;
+        set => this.RaiseAndSetIfChanged(ref observaciones, value ?? string.Empty);
     }
 }
 

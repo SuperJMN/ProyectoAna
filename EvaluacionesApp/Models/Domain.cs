@@ -29,6 +29,9 @@ public class Student
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;
+    public int Positivos { get; set; }
+    public int Negativos { get; set; }
+    public string Observaciones { get; set; } = string.Empty;
 }
 
 public class Criterion
