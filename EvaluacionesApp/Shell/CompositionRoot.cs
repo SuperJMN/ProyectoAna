@@ -33,6 +33,7 @@ public static class CompositionRoot
         // Application services
         services.AddSingleton<Services.PersistenceService>();
         services.AddSingleton<DynamicSchoolStore>();
+        services.AddSingleton<IDynamicSchoolStore>(sp => sp.GetRequiredService<DynamicSchoolStore>());
 
         // VMs
         services.AddTransient<Views.Grades.GradesViewModel>();
