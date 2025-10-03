@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using DynamicData;
 
 namespace EvaluacionesApp.Dynamic;
@@ -14,5 +15,20 @@ public static class DynamicCriterionExtensions
     {
         return criterion.ChildrenChanges.MergeChangeSets(
             criterion.ChildrenChanges.MergeManyChangeSets(child => child.SelfAndDescendants()));
+    }
+
+    public static IEnumerable<DynamicCriterion> EnumerateSelfAndDescendants(this DynamicCriterion criterion)
+    {
+        ArgumentNullException.ThrowIfNull(criterion);
+
+        yield return criterion;
+
+        foreach (var child in criterion.Children)
+        {
+            foreach (var descendant in child.EnumerateSelfAndDescendants())
+            {
+                yield return descendant;
+            }
+        }
     }
 }

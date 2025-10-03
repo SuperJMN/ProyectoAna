@@ -166,7 +166,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         }
 
         var (course, cls) = selection.Value;
-        var leaves = course.Criteria.Where(c => c.IsLeaf).ToList();
+        var leaves = course.EnumerateLeafCriteria().ToList();
 
         foreach (var leaf in leaves)
         {

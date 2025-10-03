@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using EvaluacionesApp.Models;
 using EvaluacionesApp.Tests.Support;
+using EvaluacionesApp.Views.Converters;
 using EvaluacionesApp.Views.Grades;
 using Microsoft.Reactive.Testing;
 
@@ -24,7 +26,7 @@ public class GradesViewModelTests
         Assert.Equal(2, viewModel.Courses.Count);
         Assert.Equal("course-1", viewModel.SelectedCourse?.Id);
         Assert.Equal("class-1a", viewModel.SelectedClass?.Id);
-        Assert.Equal(2, viewModel.LeafCriteria.Count);
+        Assert.Equal(3, viewModel.LeafCriteria.Count);
         Assert.Equal(2, viewModel.ScoreRows.Count);
     }
 
@@ -133,6 +135,57 @@ public class GradesViewModelTests
             assessment.StudentId == row.Student.Id && assessment.CriterionId == "criterion-extra" && assessment.Term == viewModel.SelectedTerm);
     }
 
+    [Fact]
+    public async Task Total_uses_all_leaf_scores()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.First();
+
+        row["criterion-1a"].Value = 10;
+        row["criterion-1b"].Value = 4;
+        row["criterion-2"].Value = 6;
+
+        Pump(scheduler);
+
+        Assert.Equal(7.5, row.Total, 5);
+    }
+
+    [Fact]
+    public async Task Parent_criterion_score_updates_when_children_change()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.First();
+        var parent = viewModel.SelectedCourse!.Criteria.First(c => c.Id == "criterion-1");
+        var converter = new CriterionAggregateConverter();
+
+        row["criterion-1a"].Value = 8;
+        row["criterion-1b"].Value = 4;
+
+        Pump(scheduler);
+
+        var initial = converter.Convert(new object?[] { parent, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
+        Assert.Equal("6.67", initial);
+
+        row["criterion-1a"].Value = 10;
+
+        Pump(scheduler);
+
+        var updated = converter.Convert(new object?[] { parent, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
+        Assert.Equal("8.00", updated);
+    }
+
     private static void Pump(TestScheduler scheduler)
     {
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(10).Ticks);
@@ -164,7 +217,17 @@ public class GradesViewModelTests
                     ],
                     Criteria =
                     [
-                        new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1 },
+                        new Criterion
+                        {
+                            Id = "criterion-1",
+                            Name = "Criterion 1",
+                            Weight = 1,
+                            Children =
+                            [
+                                new Criterion { Id = "criterion-1a", Name = "Criterion 1A", Weight = 2 },
+                                new Criterion { Id = "criterion-1b", Name = "Criterion 1B", Weight = 1 }
+                            ]
+                        },
                         new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1 }
                     ]
                 },
