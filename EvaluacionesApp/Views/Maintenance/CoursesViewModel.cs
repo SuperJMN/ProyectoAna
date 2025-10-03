@@ -21,12 +21,8 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
     private readonly CompositeDisposable anchors = new();
     private DynamicRoot? root;
 
+    [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
-    public ReadOnlyObservableCollection<DynamicCourse> Courses
-    {
-        get => courses;
-        private set => this.RaiseAndSetIfChanged(ref courses, value);
-    }
 
     [Reactive] private DynamicCourse? selectedCourse;
 

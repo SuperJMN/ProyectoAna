@@ -1,14 +1,22 @@
 using System;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicAssessment : ReactiveObject
+public partial class DynamicAssessment : ReactiveObject
 {
+    [Reactive(SetModifier = AccessModifier.Private)]
     private string studentId;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
     private string criterionId;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
     private int? term;
+
+    [Reactive]
     private double? score;
 
     public DynamicAssessment(string studentId, string criterionId, int? term, double? score)
@@ -19,50 +27,40 @@ public class DynamicAssessment : ReactiveObject
         this.score = score;
     }
 
-    public string StudentId => studentId;
-    public string CriterionId => criterionId;
-    public int? Term => term;
-
-    public double? Score
-    {
-        get => score;
-        set => this.RaiseAndSetIfChanged(ref score, value);
-    }
-
-    public AssessmentKey Key => new(studentId, criterionId, term);
+    public AssessmentKey Key => new(StudentId, CriterionId, Term);
 
     public event Action<DynamicAssessment, AssessmentKey>? KeyChanged;
 
     internal void SetStudentId(string newStudentId)
     {
-        if (studentId == newStudentId)
+        if (StudentId == newStudentId)
         {
             return;
         }
         var previous = Key;
-        this.RaiseAndSetIfChanged(ref studentId, newStudentId, nameof(StudentId));
+        StudentId = newStudentId;
         KeyChanged?.Invoke(this, previous);
     }
 
     internal void SetCriterionId(string newCriterionId)
     {
-        if (criterionId == newCriterionId)
+        if (CriterionId == newCriterionId)
         {
             return;
         }
         var previous = Key;
-        this.RaiseAndSetIfChanged(ref criterionId, newCriterionId, nameof(CriterionId));
+        CriterionId = newCriterionId;
         KeyChanged?.Invoke(this, previous);
     }
 
     internal void SetTerm(int? newTerm)
     {
-        if (term == newTerm)
+        if (Term == newTerm)
         {
             return;
         }
         var previous = Key;
-        this.RaiseAndSetIfChanged(ref term, newTerm, nameof(Term));
+        Term = newTerm;
         KeyChanged?.Invoke(this, previous);
     }
 
@@ -70,10 +68,10 @@ public class DynamicAssessment : ReactiveObject
     {
         return new Assessment
         {
-            StudentId = studentId,
-            CriterionId = criterionId,
-            Term = term,
-            Score = score
+            StudentId = StudentId,
+            CriterionId = CriterionId,
+            Term = Term,
+            Score = Score
         };
     }
 }

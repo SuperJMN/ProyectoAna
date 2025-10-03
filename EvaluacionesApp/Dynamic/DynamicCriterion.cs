@@ -4,18 +4,23 @@ using System.Linq;
 using System.Reactive.Disposables;
 using DynamicData;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicCriterion : ReactiveObject, IDisposable
+public partial class DynamicCriterion : ReactiveObject, IDisposable
 {
     private readonly DynamicCourse course;
     private readonly DynamicCriterion? parent;
     private readonly SourceCache<DynamicCriterion, string> childrenCache = new(child => child.Id);
     private readonly CompositeDisposable anchors = new();
     private readonly string id;
+
+    [Reactive]
     private string name;
+
+    [Reactive]
     private double weight;
 
     public DynamicCriterion(Criterion model, DynamicCourse course, DynamicCriterion? parent)
@@ -44,18 +49,6 @@ public class DynamicCriterion : ReactiveObject, IDisposable
     }
 
     public string Id => id;
-
-    public string Name
-    {
-        get => name;
-        set => this.RaiseAndSetIfChanged(ref name, value);
-    }
-
-    public double Weight
-    {
-        get => weight;
-        set => this.RaiseAndSetIfChanged(ref weight, value);
-    }
 
     public bool IsLeaf => Children.Count == 0;
 
