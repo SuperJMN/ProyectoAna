@@ -4,17 +4,20 @@ using System.Linq;
 using System.Reactive.Disposables;
 using DynamicData;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicCourse : ReactiveObject, IDisposable
+public partial class DynamicCourse : ReactiveObject, IDisposable
 {
     private readonly SourceCache<DynamicClass, string> classesCache = new(c => c.Id);
     private readonly SourceCache<DynamicCriterion, string> criteriaCache = new(c => c.Id);
     private readonly CompositeDisposable anchors = new();
 
     private readonly string id;
+
+    [Reactive]
     private string name;
 
     public DynamicCourse(Course model, DynamicRoot _)
@@ -48,12 +51,6 @@ public class DynamicCourse : ReactiveObject, IDisposable
     }
 
     public string Id => id;
-
-    public string Name
-    {
-        get => name;
-        set => this.RaiseAndSetIfChanged(ref name, value);
-    }
 
     public ReadOnlyObservableCollection<DynamicClass> Classes { get; }
 

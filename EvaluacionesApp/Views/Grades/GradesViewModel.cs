@@ -24,7 +24,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<ScoreRow, string> scoreRowsCache = new(row => row.Student.Id);
     private readonly ObservableCollection<DynamicCriterion> leafCriteriaInternal = new();
+    [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = new(new ObservableCollection<DynamicCourse>());
+
+    [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<ScoreRow> scoreRows = new(new ObservableCollection<ScoreRow>());
     private Dictionary<string, double> weights = new();
     private DynamicRoot? root;
@@ -125,17 +128,9 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
     public Task Initialization { get; }
 
-    public ReadOnlyObservableCollection<DynamicCourse> Courses
-    {
-        get => courses;
-        private set => this.RaiseAndSetIfChanged(ref courses, value);
-    }
-
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
     public ReadOnlyObservableCollection<DynamicCriterion> LeafCriteria { get; }
-
-    public ReadOnlyObservableCollection<ScoreRow> ScoreRows { get; }
 
     [Reactive] private ScoreRow? selectedScoreRow;
 
@@ -247,12 +242,11 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     }
 }
 
-public class ScoreRow : ReactiveObject, IDisposable
+public partial class ScoreRow : ReactiveObject, IDisposable
 {
     private readonly SourceCache<DynamicAssessment, string> assessments = new(assessment => assessment.CriterionId);
     private readonly Dictionary<string, ScoreBinding> bindingCache = new();
     private readonly CompositeDisposable anchors = new();
-    private readonly ObservableAsPropertyHelper<double> total;
     private readonly Subject<Unit> weightChanges = new();
     private readonly IScheduler scheduler;
     private readonly DynamicClass @class;
@@ -271,16 +265,7 @@ public class ScoreRow : ReactiveObject, IDisposable
             assessments.AddOrUpdate(assessment);
         }
 
-        total = Observable.Merge(
-                assessments.Connect()
-                    .AutoRefresh(a => a.Score)
-                    .Select(_ => Unit.Default),
-                weightChanges)
-            .Select(_ => CalculateTotal())
-            .StartWith(CalculateTotal())
-            .ObserveOn(scheduler)
-            .ToProperty(this, row => row.Total)
-            .DisposeWith(anchors);
+        InitializeOAPH();
     }
 
     public DynamicStudent Student { get; }
@@ -320,7 +305,18 @@ public class ScoreRow : ReactiveObject, IDisposable
         return assessments.Items.Sum(assessment => (assessment.Score ?? 0) * weights.GetValueOrDefault(assessment.CriterionId));
     }
 
-    public double Total => total.Value;
+    [ObservableAsProperty(PropertyName = nameof(Total))]
+    private IObservable<double> TotalObservable()
+    {
+        return Observable.Merge(
+                assessments.Connect()
+                    .AutoRefresh(a => a.Score)
+                    .Select(_ => Unit.Default),
+                weightChanges)
+            .Select(_ => CalculateTotal())
+            .StartWith(CalculateTotal())
+            .ObserveOn(scheduler);
+    }
 
     public void SetWeights(Dictionary<string, double> map)
     {

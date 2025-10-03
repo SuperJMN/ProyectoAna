@@ -5,11 +5,12 @@ using System.Linq;
 using System.Reactive.Disposables;
 using DynamicData;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicClass : ReactiveObject, IDisposable
+public partial class DynamicClass : ReactiveObject, IDisposable
 {
     private readonly SourceCache<DynamicStudent, string> studentsCache = new(student => student.Id);
     private readonly SourceCache<DynamicAssessment, AssessmentKey> assessmentsCache = new(assessment => assessment.Key);
@@ -17,6 +18,8 @@ public class DynamicClass : ReactiveObject, IDisposable
     private readonly Dictionary<DynamicAssessment, IDisposable> assessmentSubscriptions = new();
 
     private readonly string id;
+
+    [Reactive]
     private string name;
 
     public DynamicClass(Class model, DynamicCourse owner)
@@ -56,12 +59,6 @@ public class DynamicClass : ReactiveObject, IDisposable
     }
 
     public string Id => id;
-
-    public string Name
-    {
-        get => name;
-        set => this.RaiseAndSetIfChanged(ref name, value);
-    }
 
     public ReadOnlyObservableCollection<DynamicStudent> Students { get; }
 

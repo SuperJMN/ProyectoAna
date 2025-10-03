@@ -1,12 +1,15 @@
 using System;
 using ReactiveUI;
+using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
-public class DynamicStudent : ReactiveObject
+public partial class DynamicStudent : ReactiveObject
 {
     private readonly string id;
+
+    [Reactive]
     private string name;
     private int positivos;
     private int negativos;
