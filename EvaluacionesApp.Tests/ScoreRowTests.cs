@@ -68,4 +68,47 @@ public class ScoreRowTests
 
         Assert.Equal(7.2, row.Total, 2);
     }
+
+    [Fact]
+    public async Task Creates_missing_assessments_on_demand()
+    {
+        var scheduler = ImmediateScheduler.Instance;
+        var root = new Root
+        {
+            Courses =
+            [
+                new Course
+                {
+                    Id = "course-1",
+                    Criteria =
+                    [
+                        new Criterion { Id = "crit-1", Weight = 1 }
+                    ],
+                    Classes =
+                    [
+                        new Class
+                        {
+                            Id = "class-1",
+                            Students =
+                            [
+                                new Student { Id = "stu-1", Name = "Ana" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        using var store = TestStoreFactory.Create(root);
+        var course = (await store.GetRoot()).Courses[0];
+        var cls = course.Classes[0];
+        var student = cls.Students[0];
+        var row = new ScoreRow(cls, student, course.Criteria, 1, scheduler);
+
+        var binding = row["crit-extra"];
+
+        Assert.Null(binding.Value);
+        Assert.Contains(cls.Assessments, assessment =>
+            assessment.StudentId == student.Id && assessment.CriterionId == "crit-extra" && assessment.Term == 1);
+    }
 }

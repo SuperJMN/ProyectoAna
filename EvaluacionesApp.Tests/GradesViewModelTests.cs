@@ -113,6 +113,25 @@ public class GradesViewModelTests
         Assert.Equal(1, store.SaveCount);
     }
 
+    [Fact]
+    public async Task Score_rows_create_missing_assessments()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.First();
+        var binding = row["criterion-extra"];
+
+        Assert.Null(binding.Value);
+        var cls = viewModel.SelectedClass!;
+        Assert.Contains(cls.Assessments, assessment =>
+            assessment.StudentId == row.Student.Id && assessment.CriterionId == "criterion-extra" && assessment.Term == viewModel.SelectedTerm);
+    }
+
     private static void Pump(TestScheduler scheduler)
     {
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(10).Ticks);

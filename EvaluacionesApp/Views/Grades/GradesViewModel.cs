@@ -255,6 +255,7 @@ public class ScoreRow : ReactiveObject, IDisposable
     private readonly ObservableAsPropertyHelper<double> total;
     private readonly Subject<Unit> weightChanges = new();
     private readonly IScheduler scheduler;
+    private readonly DynamicClass @class;
     private Dictionary<string, double> weights = new();
 
     public ScoreRow(DynamicClass cls, DynamicStudent student, IEnumerable<DynamicCriterion> criteria, int term, IScheduler scheduler)
@@ -262,6 +263,7 @@ public class ScoreRow : ReactiveObject, IDisposable
         Student = student;
         Term = term;
         this.scheduler = scheduler;
+        @class = cls;
 
         foreach (var criterion in criteria)
         {
@@ -294,7 +296,7 @@ public class ScoreRow : ReactiveObject, IDisposable
                 return binding;
             }
 
-            var assessment = assessments.Lookup(criterionId).Value;
+            var assessment = EnsureAssessment(criterionId);
             var created = new ScoreBinding(assessment, scheduler);
             bindingCache[criterionId] = created;
             return created;
@@ -309,11 +311,8 @@ public class ScoreRow : ReactiveObject, IDisposable
 
     internal void SetScore(string criterionId, double? value)
     {
-        var optional = assessments.Lookup(criterionId);
-        if (optional.HasValue)
-        {
-            optional.Value.Score = value;
-        }
+        var assessment = EnsureAssessment(criterionId);
+        assessment.Score = value;
     }
 
     double CalculateTotal()
@@ -327,6 +326,19 @@ public class ScoreRow : ReactiveObject, IDisposable
     {
         weights = map;
         weightChanges.OnNext(Unit.Default);
+    }
+
+    DynamicAssessment EnsureAssessment(string criterionId)
+    {
+        var optional = assessments.Lookup(criterionId);
+        if (optional.HasValue)
+        {
+            return optional.Value;
+        }
+
+        var assessment = @class.GetOrCreateAssessment(Student.Id, criterionId, Term);
+        assessments.AddOrUpdate(assessment);
+        return assessment;
     }
 
     public void Dispose()
