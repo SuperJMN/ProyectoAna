@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Views.Maintenance.StudentsView"
              xmlns:vm="clr-namespace:EvaluacionesApp.Views.Maintenance"
@@ -40,6 +41,23 @@
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
         <TextBox Width="240" Text="{Binding SelectedStudent.Name}"/>
       </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Positivos:" VerticalAlignment="Center"/>
+        <controls:NumericUpDown Width="120"
+                                Minimum="0"
+                                Increment="1"
+                                Value="{Binding SelectedStudent.Positivos}"/>
+        <TextBlock Text="Negativos:" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        <controls:NumericUpDown Width="120"
+                                Minimum="0"
+                                Increment="1"
+                                Value="{Binding SelectedStudent.Negativos}"/>
+      </StackPanel>
+      <TextBlock Text="Observaciones:"/>
+      <TextBox Text="{Binding SelectedStudent.Observaciones}"
+               AcceptsReturn="True"
+               Height="120"
+               TextWrapping="Wrap"/>
     </StackPanel>
   </Grid>
 </UserControl>

@@ -105,6 +105,9 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         cls.StudentsChanges
             .AutoRefresh(s => s.Name)
             .AutoRefresh(s => s.Id)
+            .AutoRefresh(s => s.Positivos)
+            .AutoRefresh(s => s.Negativos)
+            .AutoRefresh(s => s.Observaciones)
             .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
