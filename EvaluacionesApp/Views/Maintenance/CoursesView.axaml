@@ -23,10 +23,6 @@
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
         <TextBox Width="240" Text="{Binding SelectedCourse.Name}"/>
       </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBlock Text="Id:" VerticalAlignment="Center"/>
-        <TextBox Width="240" Text="{Binding SelectedCourse.Id}"/>
-      </StackPanel>
     </StackPanel>
   </Grid>
 </UserControl>

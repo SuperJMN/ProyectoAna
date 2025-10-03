@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Threading.Tasks;
@@ -34,7 +35,7 @@ public class ScoreRowTests
                             Id = "class-1",
                             Students =
                             [
-                                new Student { Id = "stu-1", Name = "Ana" }
+                                new Student { Id = Guid.NewGuid().ToString(), Name = "Ana" }
                             ]
                         }
                     ]
@@ -91,7 +92,7 @@ public class ScoreRowTests
                             Id = "class-1",
                             Students =
                             [
-                                new Student { Id = "stu-1", Name = "Ana" }
+                                new Student { Id = Guid.NewGuid().ToString(), Name = "Ana" }
                             ]
                         }
                     ]
