@@ -13,7 +13,6 @@
         <conv:HasChildrenConverter x:Key="HasChildren" />
         <conv:IsLeafConverter x:Key="IsLeaf" />
         <conv:RowCriterionToBindingConverter x:Key="RowCritToBinding" />
-        <conv:ScopedChildrenConverter x:Key="ScopedChildren" />
     </UserControl.Resources>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8" Grid.ColumnSpan="2">
@@ -70,14 +69,7 @@
                 </TextBlock>
                 <TreeView ItemsSource="{Binding CriteriaTree}">
                     <TreeView.ItemTemplate>
-                        <TreeDataTemplate>
-                            <TreeDataTemplate.ItemsSource>
-                                <MultiBinding Converter="{StaticResource ScopedChildren}">
-                                    <Binding />
-                                    <Binding ElementName="Root" Path="DataContext.SelectedClass.Id" />
-                                    <Binding ElementName="Root" Path="DataContext.SelectedTerm" />
-                                </MultiBinding>
-                            </TreeDataTemplate.ItemsSource>
+                        <TreeDataTemplate ItemsSource="{Binding Children}">
                             <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
                                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

@@ -12,6 +12,7 @@ using CSharpFunctionalExtensions;
 using DynamicData;
 using DynamicData.Binding;
 using EvaluacionesApp.Dynamic;
+using EvaluacionesApp.ViewModels;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 
@@ -33,7 +34,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     private DynamicRoot? root;
 
     [Reactive]
-    private IEnumerable<DynamicCriterion> criteriaTree = Enumerable.Empty<DynamicCriterion>();
+    private IEnumerable<ScopedCriterionNode> criteriaTree = Enumerable.Empty<ScopedCriterionNode>();
 
     public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
     {
@@ -166,12 +167,16 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         if (selection.HasNoValue)
         {
             SelectedScoreRow = null;
-            CriteriaTree = Enumerable.Empty<DynamicCriterion>();
+            CriteriaTree = Enumerable.Empty<ScopedCriterionNode>();
             return;
         }
 
         var (course, cls) = selection.Value;
-        CriteriaTree = course.FilterCriteriaTree(cls.Id, SelectedTerm).ToList();
+        CriteriaTree = course.FilterCriteriaTree(cls.Id, SelectedTerm)
+            .Select(root => ScopedCriterionNode.Build(root, cls.Id, SelectedTerm))
+            .Where(node => node != null)
+            .Select(node => node!)
+            .ToList();
         var leaves = course.EnumerateLeafCriteria(cls.Id, SelectedTerm).ToList();
 
         foreach (var leaf in leaves)

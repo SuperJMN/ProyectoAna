@@ -120,7 +120,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (SelectedClass != null && SelectedCourse != null)
         {
             var leafCriteria = LeafCriteria.Select(c => c.Id).ToHashSet();
-            var assessments = new List<Assessment>();
+            var updates = new List<Assessment>();
             foreach (var row in ScoreRows)
             {
                 foreach (var kv in row.Scores)
@@ -128,7 +128,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (!leafCriteria.Contains(kv.Key)) continue;
                     if (kv.Value is double v)
                     {
-                        assessments.Add(new Assessment
+                        updates.Add(new Assessment
                         {
                             StudentId = row.Student.Id,
                             CriterionId = kv.Key,
@@ -140,7 +140,10 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             // Update backing model for the selected class
             var model = SelectedClass.Model;
-            model.Assessments = assessments;
+            model.Assessments = AssessmentUtilities.MergeAssessments(
+                model.Assessments,
+                updates,
+                SelectedTerm);
         }
 
         var root = new Root();
@@ -239,22 +242,17 @@ public partial class MainWindowViewModel : ViewModelBase
         if (SelectedClass == null || SelectedCourse == null) return;
 
         var leafCriteria = GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
-
-        // Index existing assessments by (studentId, criterionId)
-        var existing = SelectedClass.Model.Assessments
-            .Where(a => a.CriterionId != null && a.StudentId != null)
-            .ToDictionary(a => (a.StudentId, a.CriterionId, a.Term ?? SelectedTerm), a => a.Score);
+        var existing = AssessmentUtilities.BuildScoreLookup(SelectedClass.Model.Assessments, SelectedTerm);
 
         foreach (var s in SelectedClass.Students)
         {
             var row = new ScoreRowVm(s);
             foreach (var cr in leafCriteria)
             {
-                var key = (s.Id, cr.Id, SelectedTerm);
-                if (existing.TryGetValue(key, out var score))
-                    row.Scores[cr.Id] = score;
-                else
-                    row.Scores[cr.Id] = null;
+                var key = (s.Id, cr.Id);
+                row.Scores[cr.Id] = existing.TryGetValue(key, out var score)
+                    ? score
+                    : null;
             }
             ScoreRows.Add(row);
         }

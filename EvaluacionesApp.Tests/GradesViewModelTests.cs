@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using EvaluacionesApp.Models;
 using EvaluacionesApp.Tests.Support;
 using EvaluacionesApp.Views.Converters;
+using EvaluacionesApp.ViewModels;
 using EvaluacionesApp.Views.Grades;
 using Microsoft.Reactive.Testing;
 
@@ -168,6 +169,7 @@ public class GradesViewModelTests
 
         var row = viewModel.ScoreRows.First();
         var parent = viewModel.SelectedCourse!.Criteria.First(c => c.Id == "criterion-1");
+        var node = ScopedCriterionNode.Build(parent, viewModel.SelectedClass!.Id, viewModel.SelectedTerm)!;
         var converter = new CriterionAggregateConverter();
 
         row["criterion-1a"].Value = 8;
@@ -175,14 +177,14 @@ public class GradesViewModelTests
 
         Pump(scheduler);
 
-        var initial = converter.Convert(new object?[] { parent, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
+        var initial = converter.Convert(new object?[] { node, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
         Assert.Equal("6.67", initial);
 
         row["criterion-1a"].Value = 10;
 
         Pump(scheduler);
 
-        var updated = converter.Convert(new object?[] { parent, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
+        var updated = converter.Convert(new object?[] { node, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
         Assert.Equal("8.00", updated);
     }
 
