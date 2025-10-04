@@ -8,7 +8,7 @@ namespace EvaluacionesApp.Tests;
 public class AssessmentUtilitiesTests
 {
     [Fact]
-    public void BuildScoreLookup_prefers_selected_term_and_falls_back_to_legacy_entries()
+    public void BuildScoreLookup_prefers_selected_term_and_limits_legacy_entries_to_first_term()
     {
         var assessments = new List<Assessment>
         {
@@ -23,8 +23,8 @@ public class AssessmentUtilitiesTests
 
         Assert.Equal(8, firstTerm[("s1", "c1")]);
         Assert.Equal(6, firstTerm[("s1", "c2")]);
-        Assert.Equal(7, thirdTerm[("s1", "c1")]);
-        Assert.Equal(6, thirdTerm[("s1", "c2")]);
+        Assert.False(thirdTerm.ContainsKey(("s1", "c1")));
+        Assert.False(thirdTerm.ContainsKey(("s1", "c2")));
     }
 
     [Fact]

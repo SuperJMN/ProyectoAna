@@ -68,6 +68,51 @@ public class GradesViewModelTests
     }
 
     [Fact]
+    public async Task Switching_term_excludes_legacy_criteria_from_other_terms()
+    {
+        var scheduler = new TestScheduler();
+        var legacyCourse = new Course
+        {
+            Id = "course-legacy",
+            Name = "Legacy Course",
+            Classes =
+            [
+                new Class
+                {
+                    Id = "class-legacy",
+                    Name = "Legacy Class",
+                    Students =
+                    [
+                        new Student { Id = Guid.NewGuid().ToString(), Name = "Student" }
+                    ],
+                    Assessments = new List<Assessment>()
+                }
+            ],
+            Criteria =
+            [
+                new Criterion { Id = "legacy", Name = "Legacy", Weight = 1, ClassId = "class-legacy", Term = null },
+                new Criterion { Id = "term-2", Name = "Term 2", Weight = 1, ClassId = "class-legacy", Term = 2 }
+            ]
+        };
+
+        var root = new Root { Courses = [legacyCourse] };
+
+        using var store = RecordingSchoolStore.FromDomain(root);
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.Contains(viewModel.LeafCriteria, criterion => criterion.Id == "legacy");
+
+        viewModel.SelectedTerm = 2;
+        Pump(scheduler);
+
+        Assert.DoesNotContain(viewModel.LeafCriteria, criterion => criterion.Id == "legacy");
+        Assert.Contains(viewModel.LeafCriteria, criterion => criterion.Id == "term-2");
+    }
+
+    [Fact]
     public async Task Updating_score_triggers_save()
     {
         var scheduler = new TestScheduler();

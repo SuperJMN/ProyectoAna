@@ -30,7 +30,7 @@ internal static class AssessmentUtilities
                 continue;
             }
 
-            if (!assessment.Term.HasValue && !map.ContainsKey(key))
+            if (!assessment.Term.HasValue && selectedTerm == 1 && !map.ContainsKey(key))
             {
                 map[key] = assessment.Score;
             }

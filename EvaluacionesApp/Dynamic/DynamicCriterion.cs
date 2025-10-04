@@ -141,7 +141,7 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
     {
         if (!criterionTerm.HasValue)
         {
-            return true;
+            return selectedTerm == 1;
         }
 
         return criterionTerm.Value == selectedTerm;

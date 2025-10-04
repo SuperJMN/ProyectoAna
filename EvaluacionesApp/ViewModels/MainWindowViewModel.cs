@@ -300,7 +300,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!criterionTerm.HasValue)
         {
-            return true;
+            return selectedTerm == 1;
         }
 
         return criterionTerm.Value == selectedTerm;
