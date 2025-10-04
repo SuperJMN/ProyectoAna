@@ -222,13 +222,15 @@ public class GradesViewModelTests
                             Id = "criterion-1",
                             Name = "Criterion 1",
                             Weight = 1,
+                            ClassId = "class-1a",
+                            Term = 1,
                             Children =
                             [
-                                new Criterion { Id = "criterion-1a", Name = "Criterion 1A", Weight = 2 },
-                                new Criterion { Id = "criterion-1b", Name = "Criterion 1B", Weight = 1 }
+                                new Criterion { Id = "criterion-1a", Name = "Criterion 1A", Weight = 2, ClassId = "class-1a", Term = 1 },
+                                new Criterion { Id = "criterion-1b", Name = "Criterion 1B", Weight = 1, ClassId = "class-1a", Term = 1 }
                             ]
                         },
-                        new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1 }
+                        new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1, ClassId = "class-1a", Term = 1 }
                     ]
                 },
                 new Course
@@ -250,7 +252,7 @@ public class GradesViewModelTests
                     ],
                     Criteria =
                     [
-                        new Criterion { Id = "criterion-3", Name = "Criterion 3", Weight = 1 }
+                        new Criterion { Id = "criterion-3", Name = "Criterion 3", Weight = 1, ClassId = "class-2a", Term = 1 }
                     ]
                 }
             ]

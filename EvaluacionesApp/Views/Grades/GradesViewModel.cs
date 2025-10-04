@@ -32,6 +32,9 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     private Dictionary<string, double> weights = new();
     private DynamicRoot? root;
 
+    [Reactive]
+    private IEnumerable<DynamicCriterion> criteriaTree = Enumerable.Empty<DynamicCriterion>();
+
     public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
     {
         this.store = store;
@@ -137,6 +140,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
     [Reactive] private int selectedTerm = 1;
 
+
     public ReactiveCommand<Unit, Unit> Reload { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<Unit, Unit> RebuildRows { get; }
@@ -162,11 +166,13 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         if (selection.HasNoValue)
         {
             SelectedScoreRow = null;
+            CriteriaTree = Enumerable.Empty<DynamicCriterion>();
             return;
         }
 
         var (course, cls) = selection.Value;
-        var leaves = course.EnumerateLeafCriteria().ToList();
+        CriteriaTree = course.FilterCriteriaTree(cls.Id, SelectedTerm).ToList();
+        var leaves = course.EnumerateLeafCriteria(cls.Id, SelectedTerm).ToList();
 
         foreach (var leaf in leaves)
         {

@@ -25,7 +25,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<ScoreRowVm> ScoreRows { get; } = new();
 
-    public IReadOnlyList<CriterionVm> LeafCriteria => SelectedCourse == null ? Array.Empty<CriterionVm>() : GetLeafCriteria(SelectedCourse);
+    public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
+
+    [Reactive]
+    private int selectedTerm = 1;
+
+    public IReadOnlyList<CriterionVm> LeafCriteria =>
+        SelectedCourse == null ? Array.Empty<CriterionVm>() : GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
 
     public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddCourse { get; }
     public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddClass { get; }
@@ -55,6 +61,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _ = Initialize();
         HookSelectionSubscriptions();
+
+        this.WhenAnyValue(x => x.SelectedTerm)
+            .Subscribe(_ =>
+            {
+                BuildScoreRows();
+                this.RaisePropertyChanged(nameof(LeafCriteria));
+            });
     }
 
     async Task Initialize()
@@ -119,7 +132,8 @@ public partial class MainWindowViewModel : ViewModelBase
                         {
                             StudentId = row.Student.Id,
                             CriterionId = kv.Key,
-                            Score = v
+                            Score = v,
+                            Term = SelectedTerm
                         });
                     }
                 }
@@ -169,7 +183,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (SelectedCourse == null) return;
         var idx = SelectedCourse.Criteria.Count + 1;
-        var model = new Criterion { Id = $"C{idx}", Name = $"Criterion {idx}", Weight = 1 };
+        var model = new Criterion
+        {
+            Id = $"C{idx}",
+            Name = $"Criterion {idx}",
+            Weight = 1,
+            ClassId = SelectedClass?.Id ?? string.Empty,
+            Term = SelectedTerm
+        };
         SelectedCourse.Criteria.Add(new CriterionVm(model));
         BuildScoreRows();
         this.RaisePropertyChanged(nameof(LeafCriteria));
@@ -182,7 +203,14 @@ public partial class MainWindowViewModel : ViewModelBase
         var parent = SelectedCourse.Criteria.LastOrDefault();
         if (parent == null) return;
         var idx = parent.Children.Count + 1;
-        var model = new Criterion { Id = $"{parent.Id}.{idx}", Name = $"Subcriterion {idx}", Weight = 1 };
+        var model = new Criterion
+        {
+            Id = $"{parent.Id}.{idx}",
+            Name = $"Subcriterion {idx}",
+            Weight = 1,
+            ClassId = parent.ClassId,
+            Term = parent.Term
+        };
         parent.Children.Add(new CriterionVm(model));
         BuildScoreRows();
         this.RaisePropertyChanged(nameof(LeafCriteria));
@@ -210,19 +238,19 @@ public partial class MainWindowViewModel : ViewModelBase
         ScoreRows.Clear();
         if (SelectedClass == null || SelectedCourse == null) return;
 
-        var leafCriteria = GetLeafCriteria(SelectedCourse);
+        var leafCriteria = GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
 
         // Index existing assessments by (studentId, criterionId)
         var existing = SelectedClass.Model.Assessments
             .Where(a => a.CriterionId != null && a.StudentId != null)
-            .ToDictionary(a => (a.StudentId, a.CriterionId), a => a.Score);
+            .ToDictionary(a => (a.StudentId, a.CriterionId, a.Term ?? SelectedTerm), a => a.Score);
 
         foreach (var s in SelectedClass.Students)
         {
             var row = new ScoreRowVm(s);
             foreach (var cr in leafCriteria)
             {
-                var key = (s.Id, cr.Id);
+                var key = (s.Id, cr.Id, SelectedTerm);
                 if (existing.TryGetValue(key, out var score))
                     row.Scores[cr.Id] = score;
                 else
@@ -232,18 +260,51 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    static List<CriterionVm> GetLeafCriteria(CourseVm course)
+    static List<CriterionVm> GetLeafCriteria(CourseVm course, ClassVm? cls, int term)
     {
         var list = new List<CriterionVm>();
-        void Walk(IEnumerable<CriterionVm> nodes)
+        var classId = cls?.Id;
+
+        void Walk(IEnumerable<CriterionVm> nodes, string? inheritedClassId, int? inheritedTerm)
         {
             foreach (var n in nodes)
             {
-                if (n.Children.Count == 0) list.Add(n);
-                else Walk(n.Children);
+                var effectiveClassId = string.IsNullOrWhiteSpace(n.ClassId) ? inheritedClassId : n.ClassId;
+                var effectiveTerm = n.Term ?? inheritedTerm;
+                if (n.Children.Count == 0)
+                {
+                    if (IsMatchingScope(effectiveClassId, classId) && IsMatchingTerm(effectiveTerm, term))
+                    {
+                        list.Add(n);
+                    }
+                }
+                else
+                {
+                    Walk(n.Children, effectiveClassId, effectiveTerm);
+                }
             }
         }
-        Walk(course.Criteria);
+        Walk(course.Criteria, null, null);
         return list;
+    }
+
+    static bool IsMatchingScope(string? criterionClassId, string? selectedClassId)
+    {
+        if (string.IsNullOrWhiteSpace(criterionClassId))
+        {
+            return true;
+        }
+
+        return string.Equals(criterionClassId, selectedClassId, StringComparison.Ordinal);
+    }
+
+    static bool IsMatchingTerm(int? criterionTerm, int selectedTerm)
+    {
+        if (!criterionTerm.HasValue)
+        {
+            return true;
+        }
+
+        return criterionTerm.Value == selectedTerm;
     }
 }

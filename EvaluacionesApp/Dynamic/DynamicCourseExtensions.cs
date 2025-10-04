@@ -18,6 +18,8 @@ public static class DynamicCourseExtensions
         return course.CriteriaChanges
             .MergeManyChangeSets(criterion => criterion.SelfAndDescendants())
             .AutoRefresh(c => c.IsLeaf)
+            .AutoRefresh(c => c.ClassId)
+            .AutoRefresh(c => c.Term)
             .Filter(c => c.IsLeaf);
     }
 
@@ -28,5 +30,57 @@ public static class DynamicCourseExtensions
         return course.Criteria
             .SelectMany(criterion => criterion.EnumerateSelfAndDescendants())
             .Where(criterion => criterion.IsLeaf);
+    }
+
+    public static IEnumerable<DynamicCriterion> EnumerateLeafCriteria(this DynamicCourse course, string? classId, int term)
+    {
+        ArgumentNullException.ThrowIfNull(course);
+
+        var result = new List<DynamicCriterion>();
+        foreach (var criterion in course.Criteria)
+        {
+            CollectLeaves(criterion, classId, term, result);
+        }
+
+        return result;
+    }
+
+    public static IEnumerable<DynamicCriterion> FilterCriteriaTree(this DynamicCourse course, string? classId, int term)
+    {
+        ArgumentNullException.ThrowIfNull(course);
+
+        foreach (var criterion in course.Criteria)
+        {
+            if (criterion.MatchesTreeScope(classId, term))
+            {
+                yield return criterion;
+            }
+        }
+    }
+
+    static void CollectLeaves(
+        DynamicCriterion node,
+        string? targetClassId,
+        int term,
+        ICollection<DynamicCriterion> result)
+    {
+        if (!node.MatchesTreeScope(targetClassId, term))
+        {
+            return;
+        }
+
+        if (node.Children.Count == 0)
+        {
+            if (node.MatchesScope(targetClassId, term))
+            {
+                result.Add(node);
+            }
+            return;
+        }
+
+        foreach (var child in node.Children)
+        {
+            CollectLeaves(child, targetClassId, term, result);
+        }
     }
 }

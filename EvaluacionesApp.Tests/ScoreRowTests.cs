@@ -25,8 +25,8 @@ public class ScoreRowTests
                     Id = "course-1",
                     Criteria =
                     [
-                        new Criterion { Id = "crit-1", Weight = 2 },
-                        new Criterion { Id = "crit-2", Weight = 1 }
+                        new Criterion { Id = "crit-1", Weight = 2, ClassId = "class-1", Term = 1 },
+                        new Criterion { Id = "crit-2", Weight = 1, ClassId = "class-1", Term = 1 }
                     ],
                     Classes =
                     [
@@ -83,7 +83,7 @@ public class ScoreRowTests
                     Id = "course-1",
                     Criteria =
                     [
-                        new Criterion { Id = "crit-1", Weight = 1 }
+                        new Criterion { Id = "crit-1", Weight = 1, ClassId = "class-1", Term = 1 }
                     ],
                     Classes =
                     [

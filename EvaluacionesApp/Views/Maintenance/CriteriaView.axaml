@@ -2,10 +2,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:EvaluacionesApp.Views.Converters"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Views.Maintenance.CriteriaView"
              xmlns:vm="clr-namespace:EvaluacionesApp.Views.Maintenance"
              x:DataType="vm:CriteriaViewModel">
+  <UserControl.Resources>
+    <conv:ScopedChildrenConverter x:Key="ScopedChildren" />
+  </UserControl.Resources>
   <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
     <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
       <TextBlock Text="Curso:" VerticalAlignment="Center"/>
@@ -16,13 +20,30 @@
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
+      <TextBlock Text="Clase:" VerticalAlignment="Center"/>
+      <ComboBox Width="180" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Name}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
+      <ComboBox Width="120" ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}"/>
       <Button Content="Add Root" Command="{Binding AddRootCriterion}" Margin="12,0,0,0"/>
       <Button Content="Add Child" Command="{Binding AddChildCriterion}"/>
       <Button Content="Delete" Command="{Binding DeleteCriterion}"/>
     </StackPanel>
-    <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedCourse.Criteria}" SelectedItem="{Binding SelectedCriterion}">
+    <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Criteria}" SelectedItem="{Binding SelectedCriterion}">
       <TreeView.ItemTemplate>
-        <TreeDataTemplate ItemsSource="{Binding Children}">
+        <TreeDataTemplate>
+          <TreeDataTemplate.ItemsSource>
+            <MultiBinding Converter="{StaticResource ScopedChildren}">
+              <Binding />
+              <Binding Path="DataContext.SelectedClass.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+              <Binding Path="DataContext.SelectedTerm" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+            </MultiBinding>
+          </TreeDataTemplate.ItemsSource>
           <TextBlock Text="{Binding Name}"/>
         </TreeDataTemplate>
       </TreeView.ItemTemplate>

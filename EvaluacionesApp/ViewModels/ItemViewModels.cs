@@ -157,6 +157,12 @@ public partial class CriterionVm : ViewModelBase
     [Reactive]
     private double weight;
 
+    [Reactive]
+    private string classId = string.Empty;
+
+    [Reactive]
+    private int? term;
+
     public bool IsLeaf => Children.Count == 0;
 
     public CriterionVm(Criterion model)
@@ -165,6 +171,8 @@ public partial class CriterionVm : ViewModelBase
         id = model.Id;
         name = model.Name;
         weight = model.Weight;
+        classId = model.ClassId ?? string.Empty;
+        term = model.Term;
         foreach (var c in model.Children)
         {
             Children.Add(new CriterionVm(c));
@@ -173,6 +181,8 @@ public partial class CriterionVm : ViewModelBase
         this.WhenAnyValue(x => x.Name).Subscribe(v => Model.Name = v);
         this.WhenAnyValue(x => x.Id).Subscribe(v => Model.Id = v);
         this.WhenAnyValue(x => x.Weight).Subscribe(v => Model.Weight = v);
+        this.WhenAnyValue(x => x.ClassId).Subscribe(v => Model.ClassId = string.IsNullOrWhiteSpace(v) ? string.Empty : v);
+        this.WhenAnyValue(x => x.Term).Subscribe(v => Model.Term = v);
     }
 
 
@@ -181,6 +191,8 @@ public partial class CriterionVm : ViewModelBase
         Model.Name = Name;
         Model.Id = Id;
         Model.Weight = Weight;
+        Model.ClassId = string.IsNullOrWhiteSpace(ClassId) ? string.Empty : ClassId;
+        Model.Term = Term;
         Model.Children = Children.Select(x => x.ToModel()).ToList();
         return Model;
     }

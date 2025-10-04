@@ -125,3 +125,27 @@ public class RowCriterionToBindingConverter : IMultiValueConverter
         return row[criterion.Id];
     }
 }
+
+public class ScopedChildrenConverter : IMultiValueConverter
+{
+    public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (values.Count < 3)
+        {
+            return Array.Empty<DynamicCriterion>();
+        }
+
+        if (values[0] is not DynamicCriterion criterion)
+        {
+            return Array.Empty<DynamicCriterion>();
+        }
+
+        var classId = values[1] as string;
+        if (values[2] is not int selectedTerm)
+        {
+            return Array.Empty<DynamicCriterion>();
+        }
+
+        return criterion.FilterChildren(classId, selectedTerm).ToList();
+    }
+}
