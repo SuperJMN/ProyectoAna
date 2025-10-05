@@ -5,6 +5,7 @@
              xmlns:controls="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Desktop.Views.Maintenance.StudentsView"
+             x:Name="StudentsViewRoot"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Views.Maintenance"
              x:DataType="vm:StudentsViewModel">
   <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
@@ -39,7 +40,7 @@
                   <controls:MenuItem.ItemTemplate>
                     <DataTemplate x:DataType="vm:ClassMoveTarget">
                       <controls:MenuItem Header="{Binding ClassName}"
-                                         Command="{Binding $parent[UserControl].DataContext.MoveStudents}"
+                                         Command="{Binding #StudentsViewRoot.DataContext.MoveStudents}"
                                          CommandParameter="{Binding}"/>
                     </DataTemplate>
                   </controls:MenuItem.ItemTemplate>
