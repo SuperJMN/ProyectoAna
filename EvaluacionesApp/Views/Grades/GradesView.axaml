@@ -36,7 +36,7 @@
             <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
         </StackPanel>
 
-        <Grid ColumnDefinitions="2*,3*" Margin="8">
+        <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
             <!-- Lista de alumnos -->
             <ListBox Grid.Column="0"
                      ItemsSource="{Binding ScoreRows}"
@@ -54,9 +54,11 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            
+            <GridSplitter Grid.Column="1" />
 
             <!-- Detalle de criterios del alumno seleccionado -->
-            <StackPanel Grid.Column="1" Spacing="10" Margin="12,0,0,0">
+            <StackPanel Grid.Column="2" Spacing="10" Margin="12,0,0,0">
                 <TextBlock FontWeight="Bold" FontSize="16">
                     <TextBlock.Text>
                         <Binding ElementName="Root" Path="DataContext.SelectedScoreRow.Student.Name" StringFormat="Alumno: {0}" />
@@ -68,6 +70,11 @@
                     </TextBlock.Text>
                 </TextBlock>
                 <TreeView ItemsSource="{Binding CriteriaTree}">
+                    <TreeView.ItemContainerTheme>
+                        <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                            <Setter Property="IsExpanded" Value="True" />
+                        </ControlTheme>
+                    </TreeView.ItemContainerTheme>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
