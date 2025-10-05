@@ -35,7 +35,7 @@ public class ScoreRowTests
                             Id = "class-1",
                             Students =
                             [
-                                new Student { Id = Guid.NewGuid().ToString(), Name = "Ana" }
+                                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Ana" }
                             ]
                         }
                     ]
@@ -92,7 +92,7 @@ public class ScoreRowTests
                             Id = "class-1",
                             Students =
                             [
-                                new Student { Id = Guid.NewGuid().ToString(), Name = "Ana" }
+                                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Ana" }
                             ]
                         }
                     ]

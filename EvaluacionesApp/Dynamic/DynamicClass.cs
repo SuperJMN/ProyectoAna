@@ -29,6 +29,18 @@ public partial class DynamicClass : ReactiveObject, IDisposable
         name = model.Name;
 
         studentsCache.Connect()
+            .AutoRefresh(student => student.LastName)
+            .AutoRefresh(student => student.FirstName)
+            .Sort(Comparer<DynamicStudent>.Create((left, right) =>
+            {
+                var lastNameComparison = string.Compare(left.LastName, right.LastName, StringComparison.CurrentCultureIgnoreCase);
+                if (lastNameComparison != 0)
+                {
+                    return lastNameComparison;
+                }
+
+                return string.Compare(left.FirstName, right.FirstName, StringComparison.CurrentCultureIgnoreCase);
+            }))
             .Bind(out ReadOnlyObservableCollection<DynamicStudent> students)
             .Subscribe()
             .DisposeWith(anchors);

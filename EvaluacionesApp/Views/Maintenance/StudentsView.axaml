@@ -31,15 +31,17 @@
     <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedClass.Students}" SelectedItem="{Binding SelectedStudent}">
       <ListBox.ItemTemplate>
         <DataTemplate>
-          <TextBlock Text="{Binding Name}"/>
+          <TextBlock Text="{Binding FullName}"/>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
       <TextBlock Text="Student details" FontWeight="Bold"/>
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Width="240" Text="{Binding SelectedStudent.Name}"/>
+        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
+        <TextBox Width="160" Text="{Binding SelectedStudent.FirstName}"/>
+        <TextBlock Text="Apellidos:" VerticalAlignment="Center" Margin="12,0,0,0"/>
+        <TextBox Width="240" Text="{Binding SelectedStudent.LastName}"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Positivos:" VerticalAlignment="Center"/>

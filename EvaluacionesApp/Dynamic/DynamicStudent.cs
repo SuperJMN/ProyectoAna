@@ -1,7 +1,8 @@
 using System;
+using System.Linq;
+using EvaluacionesApp.Models;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
-using EvaluacionesApp.Models;
 
 namespace EvaluacionesApp.Dynamic;
 
@@ -9,7 +10,8 @@ public partial class DynamicStudent : ReactiveObject
 {
     private readonly string id;
 
-    [Reactive] private string name;
+    private string firstName;
+    private string lastName;
     [Reactive] private int positivos;
     [Reactive] private int negativos;
     [Reactive] private string observaciones;
@@ -17,20 +19,56 @@ public partial class DynamicStudent : ReactiveObject
     public DynamicStudent(Student model)
     {
         id = model.Id;
-        name = model.Name;
+        firstName = model.FirstName;
+        lastName = model.LastName;
         positivos = Math.Max(0, model.Positivos);
         negativos = Math.Max(0, model.Negativos);
         observaciones = model.Observaciones;
     }
 
     public string Id => id;
-    
+
+    public string FirstName
+    {
+        get => firstName;
+        set
+        {
+            var sanitized = value?.Trim() ?? string.Empty;
+            if (sanitized == firstName)
+            {
+                return;
+            }
+
+            this.RaiseAndSetIfChanged(ref firstName, sanitized);
+            this.RaisePropertyChanged(nameof(FullName));
+        }
+    }
+
+    public string LastName
+    {
+        get => lastName;
+        set
+        {
+            var sanitized = value?.Trim() ?? string.Empty;
+            if (sanitized == lastName)
+            {
+                return;
+            }
+
+            this.RaiseAndSetIfChanged(ref lastName, sanitized);
+            this.RaisePropertyChanged(nameof(FullName));
+        }
+    }
+
+    public string FullName => string.Join(" ", new[] { FirstName, LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+
     public Student ToDomain()
     {
         return new Student
         {
             Id = id,
-            Name = name,
+            FirstName = firstName,
+            LastName = lastName,
             Positivos = positivos,
             Negativos = negativos,
             Observaciones = observaciones
