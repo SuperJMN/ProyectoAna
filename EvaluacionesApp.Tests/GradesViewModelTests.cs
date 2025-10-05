@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using EvaluacionesApp.Models;
+using EvaluacionesApp.Desktop.Models;
 using EvaluacionesApp.Tests.Support;
-using EvaluacionesApp.Views.Converters;
-using EvaluacionesApp.ViewModels;
-using EvaluacionesApp.Views.Grades;
+using EvaluacionesApp.Desktop.Views.Converters;
+using EvaluacionesApp.Desktop.ViewModels;
+using EvaluacionesApp.Desktop.Views.Grades;
 using Microsoft.Reactive.Testing;
 
 namespace EvaluacionesApp.Tests;

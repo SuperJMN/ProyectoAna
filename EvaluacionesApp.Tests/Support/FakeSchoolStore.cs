@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using EvaluacionesApp.Dynamic;
+using EvaluacionesApp.Desktop.Dynamic;
 
 namespace EvaluacionesApp.Tests.Support;
 

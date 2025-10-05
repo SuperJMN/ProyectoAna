@@ -3,9 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EvaluacionesApp", "EvaluacionesApp\EvaluacionesApp.csproj", "{911F7AA4-317F-40DB-9E83-6788092DE93B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EvaluacionesApp.Desktop", "EvaluacionesApp.Desktop\EvaluacionesApp.Desktop.csproj", "{911F7AA4-317F-40DB-9E83-6788092DE93B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EvaluacionesApp.Tests", "EvaluacionesApp.Tests\EvaluacionesApp.Tests.csproj", "{AAE0FDE1-D5E0-4AEE-AF27-50E074EF3358}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Files ", "Solution Files ", "{AD4E4AE9-4D49-4406-B2CB-74131E4DBC49}"
+	ProjectSection(SolutionItems) = preProject
+		azure-pipelines.yml = azure-pipelines.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
