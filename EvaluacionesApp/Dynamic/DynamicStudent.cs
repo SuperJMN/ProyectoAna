@@ -60,7 +60,7 @@ public partial class DynamicStudent : ReactiveObject
         }
     }
 
-    public string FullName => string.Join(" ", new[] { FirstName, LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+    public string FullName => string.Join(", ", new[] { LastName, FirstName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
 
     public Student ToDomain()
     {
