@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Serialization;
 
 namespace EvaluacionesApp.Models;
 
@@ -28,10 +30,50 @@ public class Class
 public class Student
 {
     public string Id { get; set; } = Guid.NewGuid().ToString();
-    public string Name { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
     public int Positivos { get; set; }
     public int Negativos { get; set; }
     public string Observaciones { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacyName
+    {
+        get => null;
+        set => ApplyLegacyName(value);
+    }
+
+    [JsonIgnore]
+    public string FullName => string.Join(" ", new[] { FirstName, LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+
+    void ApplyLegacyName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(FirstName) || !string.IsNullOrWhiteSpace(LastName))
+        {
+            return;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
+        {
+            return;
+        }
+
+        var parts = trimmed.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return;
+        }
+
+        FirstName = parts[0];
+        LastName = parts.Length > 1 ? parts[1] : string.Empty;
+    }
 }
 
 public class Criterion

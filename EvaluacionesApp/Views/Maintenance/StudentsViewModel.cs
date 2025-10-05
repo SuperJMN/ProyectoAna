@@ -99,7 +99,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         classAnchors = new CompositeDisposable();
 
         cls.StudentsChanges
-            .AutoRefresh(s => s.Name)
+            .AutoRefresh(s => s.FirstName)
+            .AutoRefresh(s => s.LastName)
             .AutoRefresh(s => s.Id)
             .AutoRefresh(s => s.Positivos)
             .AutoRefresh(s => s.Negativos)
@@ -121,7 +122,12 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
         var idx = SelectedClass.Students.Count + 1;
         var id = Guid.NewGuid().ToString();
-        var model = new Models.Student { Id = id, Name = $"Student {idx}" };
+        var model = new Models.Student
+        {
+            Id = id,
+            FirstName = "Student",
+            LastName = idx.ToString()
+        };
         var student = SelectedClass.AddStudent(model);
         SelectedStudent = student;
         await ExecuteSave();

@@ -59,7 +59,7 @@ public class GradesViewModelTests
 
         var cls = viewModel.SelectedClass!;
         var newStudentId = Guid.NewGuid().ToString();
-        cls.AddStudent(new Student { Id = newStudentId, Name = "Student 3" });
+        cls.AddStudent(new Student { Id = newStudentId, FirstName = "Student", LastName = "3" });
 
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(250).Ticks);
         Pump(scheduler);
@@ -83,7 +83,7 @@ public class GradesViewModelTests
                     Name = "Legacy Class",
                     Students =
                     [
-                        new Student { Id = Guid.NewGuid().ToString(), Name = "Student" }
+                        new Student { Id = Guid.NewGuid().ToString(), FirstName = "Student" }
                     ],
                     Assessments = new List<Assessment>()
                 }
@@ -256,8 +256,8 @@ public class GradesViewModelTests
                             Name = "Class 1A",
                             Students =
                             [
-                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 1" },
-                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 2" }
+                                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Student", LastName = "1" },
+                                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Student", LastName = "2" }
                             ],
                             Assessments = new List<Assessment>()
                         }
@@ -292,7 +292,7 @@ public class GradesViewModelTests
                             Name = "Class 2A",
                             Students =
                             [
-                                new Student { Id = Guid.NewGuid().ToString(), Name = "Student 4" }
+                                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Student", LastName = "4" }
                             ],
                             Assessments = new List<Assessment>()
                         }

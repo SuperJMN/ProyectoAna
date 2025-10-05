@@ -89,8 +89,9 @@ public partial class StudentVm : ViewModelBase
     [Reactive]
     private string id = string.Empty;
 
-    [Reactive]
-    private string name = string.Empty;
+    private string firstName = string.Empty;
+
+    private string lastName = string.Empty;
 
     private int positivos;
 
@@ -102,11 +103,13 @@ public partial class StudentVm : ViewModelBase
     {
         Model = model;
         id = model.Id;
-        name = model.Name;
+        firstName = model.FirstName;
+        lastName = model.LastName;
         positivos = Math.Max(0, model.Positivos);
         negativos = Math.Max(0, model.Negativos);
         observaciones = model.Observaciones ?? string.Empty;
-        this.WhenAnyValue(x => x.Name).Subscribe(v => Model.Name = v);
+        this.WhenAnyValue(x => x.FirstName).Subscribe(v => Model.FirstName = v);
+        this.WhenAnyValue(x => x.LastName).Subscribe(v => Model.LastName = v);
         this.WhenAnyValue(x => x.Id).Subscribe(v => Model.Id = v);
         this.WhenAnyValue(x => x.Positivos).Subscribe(v => Model.Positivos = v);
         this.WhenAnyValue(x => x.Negativos).Subscribe(v => Model.Negativos = v);
@@ -116,7 +119,8 @@ public partial class StudentVm : ViewModelBase
 
     public Student ToModel()
     {
-        Model.Name = Name;
+        Model.FirstName = FirstName;
+        Model.LastName = LastName;
         Model.Id = Id;
         Model.Positivos = Positivos;
         Model.Negativos = Negativos;
@@ -140,6 +144,18 @@ public partial class StudentVm : ViewModelBase
     {
         get => observaciones;
         set => this.RaiseAndSetIfChanged(ref observaciones, value ?? string.Empty);
+    }
+
+    public string FirstName
+    {
+        get => firstName;
+        set => this.RaiseAndSetIfChanged(ref firstName, value ?? string.Empty);
+    }
+
+    public string LastName
+    {
+        get => lastName;
+        set => this.RaiseAndSetIfChanged(ref lastName, value ?? string.Empty);
     }
 }
 

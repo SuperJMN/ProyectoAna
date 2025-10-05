@@ -176,7 +176,12 @@ public partial class MainWindowViewModel : ViewModelBase
         if (SelectedClass == null) return;
         var idx = SelectedClass.Students.Count + 1;
         var id = Guid.NewGuid().ToString();
-        var model = new Student { Id = id, Name = $"Student {idx}" };
+        var model = new Student
+        {
+            Id = id,
+            FirstName = "Student",
+            LastName = idx.ToString()
+        };
         var vm = new StudentVm(model);
         SelectedClass.Students.Add(vm);
         BuildScoreRows();
