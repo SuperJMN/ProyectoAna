@@ -27,8 +27,34 @@
       </ComboBox>
       <Button Content="Add" Command="{Binding AddStudent}" Margin="12,0,0,0"/>
       <Button Content="Delete" Command="{Binding DeleteStudent}"/>
+      <Button Content="Mover a clase"
+              Margin="12,0,0,0"
+              IsEnabled="{Binding HasSelectedStudents}">
+        <Button.Flyout>
+          <controls:MenuFlyout ItemsSource="{Binding CourseMoveTargets}">
+            <controls:MenuFlyout.ItemTemplate>
+              <DataTemplate x:DataType="vm:CourseMoveTarget">
+                <controls:MenuItem Header="{Binding CourseName}"
+                                   ItemsSource="{Binding Classes}">
+                  <controls:MenuItem.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClassMoveTarget">
+                      <controls:MenuItem Header="{Binding ClassName}"
+                                         Command="{Binding $parent[UserControl].DataContext.MoveStudents}"
+                                         CommandParameter="{Binding}"/>
+                    </DataTemplate>
+                  </controls:MenuItem.ItemTemplate>
+                </controls:MenuItem>
+              </DataTemplate>
+            </controls:MenuFlyout.ItemTemplate>
+          </controls:MenuFlyout>
+        </Button.Flyout>
+      </Button>
     </StackPanel>
-    <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedClass.Students}" SelectedItem="{Binding SelectedStudent}">
+    <ListBox Grid.Row="1" Grid.Column="0"
+             ItemsSource="{Binding SelectedClass.Students}"
+             SelectedItem="{Binding SelectedStudent}"
+             SelectionMode="Multiple"
+             Selection="{Binding StudentsSelection}">
       <ListBox.ItemTemplate>
         <DataTemplate>
           <TextBlock Text="{Binding FullName}"/>

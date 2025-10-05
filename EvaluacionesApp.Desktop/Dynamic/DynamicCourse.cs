@@ -20,10 +20,14 @@ public partial class DynamicCourse : ReactiveObject, IDisposable
     [Reactive]
     private string name;
 
+    [Reactive]
+    private int? number;
+
     public DynamicCourse(Course model, DynamicRoot _)
     {
         id = model.Id;
         name = model.Name;
+        number = model.Number;
 
         classesCache.Connect()
             .Bind(out ReadOnlyObservableCollection<DynamicClass> classes)
@@ -92,6 +96,7 @@ public partial class DynamicCourse : ReactiveObject, IDisposable
         {
             Id = Id,
             Name = Name,
+            Number = Number,
             Classes = Classes.Select(c => c.ToDomain()).ToList(),
             Criteria = Criteria.Select(c => c.ToDomain()).ToList()
         };
