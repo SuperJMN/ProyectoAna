@@ -67,7 +67,7 @@
                         <Binding ElementName="Root" Path="DataContext.SelectedScoreRow.Total" StringFormat="Total (ponderado): {0:F2}" />
                     </TextBlock.Text>
                 </TextBlock>
-                <TreeView ItemsSource="{Binding SelectedCourse.Criteria}">
+                <TreeView ItemsSource="{Binding CriteriaTree}">
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">

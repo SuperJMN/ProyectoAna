@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -23,6 +24,12 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
     [Reactive]
     private double weight;
 
+    [Reactive]
+    private string? classId = string.Empty;
+
+    [Reactive]
+    private int? term;
+
     public DynamicCriterion(Criterion model, DynamicCourse course, DynamicCriterion? parent)
     {
         this.course = course;
@@ -30,6 +37,8 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
         id = model.Id;
         name = model.Name;
         weight = model.Weight;
+        classId = string.IsNullOrWhiteSpace(model.ClassId) ? string.Empty : model.ClassId;
+        term = model.Term;
 
         childrenCache.Connect()
             .Bind(out ReadOnlyObservableCollection<DynamicCriterion> children)
@@ -56,6 +65,30 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<DynamicCriterion> Children { get; }
 
+    public string? EffectiveClassId => string.IsNullOrWhiteSpace(ClassId) ? parent?.EffectiveClassId : ClassId;
+
+    public int? EffectiveTerm => Term ?? parent?.EffectiveTerm;
+
+    public bool MatchesScope(string? classId, int term)
+    {
+        return MatchesClass(EffectiveClassId, classId) && MatchesTerm(EffectiveTerm, term);
+    }
+
+    public bool MatchesTreeScope(string? classId, int term)
+    {
+        if (MatchesScope(classId, term))
+        {
+            return true;
+        }
+
+        return Children.Any(child => child.MatchesTreeScope(classId, term));
+    }
+
+    public IEnumerable<DynamicCriterion> FilterChildren(string? classId, int term)
+    {
+        return Children.Where(child => child.MatchesTreeScope(classId, term));
+    }
+
     public IObservable<IChangeSet<DynamicCriterion, string>> ChildrenChanges => childrenCache.Connect();
 
     public DynamicCriterion AddChild(Criterion model)
@@ -78,6 +111,8 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
             Id = Id,
             Name = Name,
             Weight = Weight,
+            ClassId = string.IsNullOrWhiteSpace(ClassId) ? string.Empty : ClassId,
+            Term = Term,
             Children = Children.Select(c => c.ToDomain()).ToList()
         };
     }
@@ -90,5 +125,25 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
         }
 
         anchors.Dispose();
+    }
+
+    static bool MatchesClass(string? criterionClassId, string? selectedClassId)
+    {
+        if (string.IsNullOrWhiteSpace(criterionClassId))
+        {
+            return true;
+        }
+
+        return string.Equals(criterionClassId, selectedClassId, StringComparison.Ordinal);
+    }
+
+    static bool MatchesTerm(int? criterionTerm, int selectedTerm)
+    {
+        if (!criterionTerm.HasValue)
+        {
+            return selectedTerm == 1;
+        }
+
+        return criterionTerm.Value == selectedTerm;
     }
 }

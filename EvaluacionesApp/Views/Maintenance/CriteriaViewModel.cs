@@ -9,6 +9,7 @@ using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Dynamic;
+using EvaluacionesApp.ViewModels;
 using System.Threading.Tasks;
 
 namespace EvaluacionesApp.Views.Maintenance;
@@ -26,7 +27,15 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
 
     [Reactive] private DynamicCourse? selectedCourse;
-    [Reactive] private DynamicCriterion? selectedCriterion;
+    [Reactive] private ScopedCriterionNode? selectedNode;
+    [Reactive] private DynamicClass? selectedClass;
+    [Reactive] private int selectedTerm = 1;
+
+    private readonly ObservableCollection<ScopedCriterionNode> criteriaInternal = new();
+
+    public ReadOnlyObservableCollection<ScopedCriterionNode> Criteria { get; }
+
+    public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
@@ -36,8 +45,10 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     public CriteriaViewModel(DynamicSchoolStore store)
     {
         this.store = store;
-        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
-        var hasCriterion = this.WhenAnyValue(x => x.SelectedCriterion).Select(c => c != null);
+        Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaInternal);
+        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedClass)
+            .Select(tuple => tuple.Item1 != null && tuple.Item2 != null);
+        var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
 
         AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
         AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
@@ -51,10 +62,17 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         root = await store.GetRoot();
         Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
-        SelectedCriterion = SelectedCourse?.Criteria.FirstOrDefault();
+        SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
+        SelectedTerm = 1;
+        RefreshCriteria();
+        SelectedNode = Criteria.FirstOrDefault();
 
         this.WhenAnyValue(x => x.SelectedCourse)
             .Subscribe(HandleSelectedCourseChanged)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass, x => x.SelectedTerm)
+            .Subscribe(_ => RefreshCriteria())
             .DisposeWith(anchors);
     }
 
@@ -65,89 +83,168 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
         if (course == null)
         {
+            criteriaInternal.Clear();
+            SelectedNode = null;
             return;
         }
 
         courseAnchors = new CompositeDisposable();
 
+        SelectedClass = course.Classes.FirstOrDefault();
         course.CriteriaChanges
             .MergeManyChangeSets(c => c.SelfAndDescendants())
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Weight)
             .AutoRefresh(c => c.Id)
+            .AutoRefresh(c => c.ClassId)
+            .AutoRefresh(c => c.Term)
             .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(courseAnchors);
 
-        SelectedCriterion = course.Criteria.FirstOrDefault();
+        course.CriteriaChanges
+            .MergeManyChangeSets(c => c.SelfAndDescendants())
+            .Throttle(TimeSpan.FromMilliseconds(200), RxApp.MainThreadScheduler)
+            .Subscribe(_ => RefreshCriteria())
+            .DisposeWith(courseAnchors);
+
+        RefreshCriteria();
+        SelectedNode = Criteria.FirstOrDefault();
+    }
+
+    void RefreshCriteria()
+    {
+        var previous = SelectedNode?.Criterion;
+        criteriaInternal.Clear();
+
+        if (SelectedCourse == null || SelectedClass == null)
+        {
+            SelectedNode = null;
+            return;
+        }
+
+        var relevant = SelectedCourse.FilterCriteriaTree(SelectedClass.Id, SelectedTerm)
+            .Select(root => ScopedCriterionNode.Build(root, SelectedClass.Id, SelectedTerm))
+            .Where(node => node != null)
+            .Select(node => node!)
+            .ToList();
+
+        foreach (var node in relevant)
+        {
+            criteriaInternal.Add(node);
+        }
+
+        if (previous == null)
+        {
+            SelectedNode = Criteria.FirstOrDefault();
+            return;
+        }
+
+        SelectedNode = FindNode(previous) ?? Criteria.FirstOrDefault();
     }
 
     async Task DoAddRootCriterion()
     {
-        if (SelectedCourse == null)
+        if (SelectedCourse == null || SelectedClass == null)
         {
             return;
         }
 
         var idx = SelectedCourse.Criteria.Count + 1;
-        var model = new Models.Criterion { Id = $"C{idx}", Name = $"Criterion {idx}", Weight = 1 };
+        var model = new Models.Criterion
+        {
+            Id = $"C{idx}",
+            Name = $"Criterion {idx}",
+            Weight = 1,
+            ClassId = SelectedClass?.Id ?? string.Empty,
+            Term = SelectedTerm
+        };
         var criterion = SelectedCourse.AddCriterion(model);
-        SelectedCriterion = criterion;
+        RefreshCriteria();
+        SelectedNode = FindNode(criterion) ?? SelectedNode;
         await ExecuteSave();
     }
 
     async Task DoAddChildCriterion()
     {
-        if (SelectedCriterion == null)
+        if (SelectedNode?.Criterion == null || SelectedClass == null)
         {
             return;
         }
 
-        var parent = SelectedCriterion;
+        var parent = SelectedNode.Criterion;
         var idx = parent.Children.Count + 1;
-        var model = new Models.Criterion { Id = $"{parent.Id}.{idx}", Name = $"Subcriterion {idx}", Weight = 1 };
+        var model = new Models.Criterion
+        {
+            Id = $"{parent.Id}.{idx}",
+            Name = $"Subcriterion {idx}",
+            Weight = 1,
+            ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? SelectedClass?.Id ?? string.Empty : parent.ClassId,
+            Term = parent.Term ?? SelectedTerm
+        };
         var child = parent.AddChild(model);
-        SelectedCriterion = child;
+        RefreshCriteria();
+        SelectedNode = FindNode(child) ?? SelectedNode;
         await ExecuteSave();
     }
 
     async Task DoDeleteCriterion()
     {
-        if (SelectedCourse == null || SelectedCriterion == null)
+        if (SelectedCourse == null || SelectedNode?.Criterion == null)
         {
             return;
         }
 
-        var criterion = SelectedCriterion;
+        var criterion = SelectedNode.Criterion;
         if (criterion.Children.Any())
         {
             return;
         }
 
+        var effectiveTerm = criterion.EffectiveTerm ?? 1;
         var hasAssessments = SelectedCourse.Classes
+            .Where(c => string.IsNullOrWhiteSpace(criterion.ClassId) || c.Id == criterion.ClassId)
             .SelectMany(c => c.Assessments)
-            .Any(a => a.CriterionId == criterion.Id);
+            .Any(a => a.CriterionId == criterion.Id && (a.Term ?? 1) == effectiveTerm);
         if (hasAssessments)
         {
             return;
         }
 
-        if (criterion.Parent != null)
+        var parent = criterion.Parent;
+        if (parent != null)
         {
-            criterion.Parent.RemoveChild(criterion);
+            parent.RemoveChild(criterion);
         }
         else
         {
             SelectedCourse.RemoveCriterion(criterion);
         }
-        SelectedCriterion = null;
+        RefreshCriteria();
+        SelectedNode = parent != null ? FindNode(parent) ?? Criteria.FirstOrDefault() : Criteria.FirstOrDefault();
         await ExecuteSave();
     }
 
     async Task ExecuteSave()
     {
         await store.SaveAsync();
+    }
+
+    ScopedCriterionNode? FindNode(DynamicCriterion criterion)
+    {
+        foreach (var root in Criteria)
+        {
+            var match = root
+                .SelfAndDescendants()
+                .FirstOrDefault(node => ReferenceEquals(node.Criterion, criterion));
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 
     public void Dispose()

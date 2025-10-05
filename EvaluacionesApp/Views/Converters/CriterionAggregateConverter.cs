@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Avalonia.Data.Converters;
 using EvaluacionesApp.Dynamic;
+using EvaluacionesApp.ViewModels;
 using EvaluacionesApp.Views.Grades;
 
 namespace EvaluacionesApp.Views.Converters;
@@ -13,30 +14,36 @@ public class CriterionAggregateConverter : IMultiValueConverter
 {
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (values.Count < 2) return string.Empty;
-        var criterion = values[0] as DynamicCriterion;
-        var row = values[1] as ScoreRow;
-        if (criterion == null || row == null) return string.Empty;
-        var result = Compute(criterion, row);
+        if (values.Count < 2)
+        {
+            return string.Empty;
+        }
+
+        if (values[0] is not ScopedCriterionNode node || values[1] is not ScoreRow row)
+        {
+            return string.Empty;
+        }
+
+        var result = Compute(node, row);
         return result.HasValue ? result.Value.ToString("F2", culture) : string.Empty;
     }
 
-    static double? Compute(DynamicCriterion criterion, ScoreRow row)
+    static double? Compute(ScopedCriterionNode node, ScoreRow row)
     {
-        if (criterion.Children.Count == 0)
+        if (node.Children.Count == 0)
         {
-            return row.GetScore(criterion.Id);
+            return row.GetScore(node.Criterion.Id);
         }
 
         // Weighted sum of children using normalized weights.
         // Ignore children without value and renormalize to the sum of present weights.
         var present = new List<(double value, double weight)>();
-        foreach (var child in criterion.Children)
+        foreach (var child in node.Children)
         {
             var val = Compute(child, row);
             if (val.HasValue)
             {
-                var w = child.Weight;
+                var w = child.Criterion.Weight;
                 if (w < 0) w = 0; // no pesos negativos
                 present.Add((val.Value, w));
             }
@@ -119,9 +126,18 @@ public class RowCriterionToBindingConverter : IMultiValueConverter
     public object? Convert(IList<object?> values, Type targetType, object? parameter, CultureInfo culture)
     {
         if (values.Count < 2) return null;
-        var row = values[0] as ScoreRow;
-        var criterion = values[1] as DynamicCriterion;
-        if (row == null || criterion == null) return null;
-        return row[criterion.Id];
+        if (values[0] is not ScoreRow row)
+        {
+            return null;
+        }
+
+        var criterion = values[1] switch
+        {
+            ScopedCriterionNode node => node.Criterion,
+            DynamicCriterion dynamicCriterion => dynamicCriterion,
+            _ => null
+        };
+
+        return criterion == null ? null : row[criterion.Id];
     }
 }
