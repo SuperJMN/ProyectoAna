@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Reflection;
-using EvaluacionesApp.Dynamic;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.Services;
+using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Services;
 
 namespace EvaluacionesApp.Tests.Support;
 

@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Threading.Tasks;
-using EvaluacionesApp.Dynamic;
-using EvaluacionesApp.Models;
+using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Models;
 using EvaluacionesApp.Tests.Support;
-using EvaluacionesApp.Views.Grades;
+using EvaluacionesApp.Desktop.Views.Grades;
 using Xunit;
 
 namespace EvaluacionesApp.Tests;

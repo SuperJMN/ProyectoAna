@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using EvaluacionesApp.Dynamic;
-using EvaluacionesApp.Models;
+using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Models;
 
 namespace EvaluacionesApp.Tests.Support;
 

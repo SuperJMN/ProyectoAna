@@ -1,7 +1,5 @@
-using System.Collections.Generic;
-using EvaluacionesApp.Models;
-using EvaluacionesApp.ViewModels;
-using Xunit;
+using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.ViewModels;
 
 namespace EvaluacionesApp.Tests;
 
