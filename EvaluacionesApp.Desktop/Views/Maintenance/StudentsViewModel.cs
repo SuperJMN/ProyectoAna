@@ -50,7 +50,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> AddStudent { get; }
     public ReactiveCommand<Unit, Unit> DeleteStudent { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
-    public ReactiveCommand<ClassMoveTarget, Unit> MoveStudents { get; }
+    public ReactiveCommand<ClassMoveTarget?, Unit> MoveStudents { get; }
 
     public StudentsViewModel(DynamicSchoolStore store)
     {
@@ -78,7 +78,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
-        MoveStudents = ReactiveCommand.CreateFromTask<ClassMoveTarget>(DoMoveStudents, canMove);
+        MoveStudents = ReactiveCommand.CreateFromTask<ClassMoveTarget?>(DoMoveStudents, canMove);
         _ = Load();
     }
 
