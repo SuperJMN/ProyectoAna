@@ -36,15 +36,15 @@ public class ScopedCriterionNode
         }
     }
 
-    public static ScopedCriterionNode? Build(DynamicCriterion criterion, string? classId, int term)
+    public static ScopedCriterionNode? Build(DynamicCriterion criterion, int term)
     {
-        if (!criterion.MatchesTreeScope(classId, term))
+        if (!criterion.MatchesTreeScope(term))
         {
             return null;
         }
 
-        var children = criterion.FilterChildren(classId, term)
-            .Select(child => Build(child, classId, term))
+        var children = criterion.FilterChildren(term)
+            .Select(child => Build(child, term))
             .Where(child => child != null)
             .Select(child => child!)
             .ToList();

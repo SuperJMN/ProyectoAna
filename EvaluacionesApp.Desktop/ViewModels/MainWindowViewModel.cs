@@ -32,7 +32,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private int selectedTerm = 1;
 
     public IReadOnlyList<CriterionVm> LeafCriteria =>
-        SelectedCourse == null ? Array.Empty<CriterionVm>() : GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
+        SelectedCourse == null ? Array.Empty<CriterionVm>() : GetLeafCriteria(SelectedCourse, SelectedTerm);
 
     public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddCourse { get; }
     public ReactiveCommand<System.Reactive.Unit, System.Reactive.Unit> AddClass { get; }
@@ -219,7 +219,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Id = $"C{idx}",
             Name = $"Criterion {idx}",
             Weight = 1,
-            ClassId = SelectedClass?.Id ?? string.Empty,
+            ClassId = string.Empty,
             Term = SelectedTerm
         };
         SelectedCourse.Criteria.Add(new CriterionVm(model));
@@ -239,7 +239,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Id = $"{parent.Id}.{idx}",
             Name = $"Subcriterion {idx}",
             Weight = 1,
-            ClassId = parent.ClassId,
+            ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? string.Empty : parent.ClassId,
             Term = parent.Term
         };
         parent.Children.Add(new CriterionVm(model));
@@ -285,7 +285,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ScoreRows.Clear();
         if (SelectedClass == null || SelectedCourse == null) return;
 
-        var leafCriteria = GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
+        var leafCriteria = GetLeafCriteria(SelectedCourse, SelectedTerm);
         var criterionTerms = BuildCriterionTermLookup(SelectedCourse);
         var existing = AssessmentUtilities.BuildScoreLookup(SelectedClass.Model.Assessments, criterionTerms, SelectedTerm);
 
@@ -325,42 +325,30 @@ public partial class MainWindowViewModel : ViewModelBase
         return map;
     }
 
-    static List<CriterionVm> GetLeafCriteria(CourseVm course, ClassVm? cls, int term)
+    static List<CriterionVm> GetLeafCriteria(CourseVm course, int term)
     {
         var list = new List<CriterionVm>();
-        var classId = cls?.Id;
 
-        void Walk(IEnumerable<CriterionVm> nodes, string? inheritedClassId, int? inheritedTerm)
+        void Walk(IEnumerable<CriterionVm> nodes, int? inheritedTerm)
         {
             foreach (var n in nodes)
             {
-                var effectiveClassId = string.IsNullOrWhiteSpace(n.ClassId) ? inheritedClassId : n.ClassId;
                 var effectiveTerm = n.Term ?? inheritedTerm;
                 if (n.Children.Count == 0)
                 {
-                    if (IsMatchingScope(effectiveClassId, classId) && IsMatchingTerm(effectiveTerm, term))
+                    if (IsMatchingTerm(effectiveTerm, term))
                     {
                         list.Add(n);
                     }
                 }
                 else
                 {
-                    Walk(n.Children, effectiveClassId, effectiveTerm);
+                    Walk(n.Children, effectiveTerm);
                 }
             }
         }
-        Walk(course.Criteria, null, null);
+        Walk(course.Criteria, null);
         return list;
-    }
-
-    static bool IsMatchingScope(string? criterionClassId, string? selectedClassId)
-    {
-        if (string.IsNullOrWhiteSpace(criterionClassId))
-        {
-            return true;
-        }
-
-        return string.Equals(criterionClassId, selectedClassId, StringComparison.Ordinal);
     }
 
     static bool IsMatchingTerm(int? criterionTerm, int selectedTerm)

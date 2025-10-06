@@ -90,8 +90,8 @@ public class GradesViewModelTests
             ],
             Criteria =
             [
-                new Criterion { Id = "legacy", Name = "Legacy", Weight = 1, ClassId = "class-legacy", Term = null },
-                new Criterion { Id = "term-2", Name = "Term 2", Weight = 1, ClassId = "class-legacy", Term = 2 }
+                new Criterion { Id = "legacy", Name = "Legacy", Weight = 1, ClassId = string.Empty, Term = null },
+                new Criterion { Id = "term-2", Name = "Term 2", Weight = 1, ClassId = string.Empty, Term = 2 }
             ]
         };
 
@@ -214,7 +214,7 @@ public class GradesViewModelTests
 
         var row = viewModel.ScoreRows.First();
         var parent = viewModel.SelectedCourse!.Criteria.First(c => c.Id == "criterion-1");
-        var node = ScopedCriterionNode.Build(parent, viewModel.SelectedClass!.Id, viewModel.SelectedTerm)!;
+        var node = ScopedCriterionNode.Build(parent, viewModel.SelectedTerm)!;
         var converter = new CriterionAggregateConverter();
 
         row["criterion-1a"].Value = 8;
@@ -269,15 +269,15 @@ public class GradesViewModelTests
                             Id = "criterion-1",
                             Name = "Criterion 1",
                             Weight = 1,
-                            ClassId = "class-1a",
+                            ClassId = string.Empty,
                             Term = 1,
                             Children =
                             [
-                                new Criterion { Id = "criterion-1a", Name = "Criterion 1A", Weight = 2, ClassId = "class-1a", Term = 1 },
-                                new Criterion { Id = "criterion-1b", Name = "Criterion 1B", Weight = 1, ClassId = "class-1a", Term = 1 }
+                                new Criterion { Id = "criterion-1a", Name = "Criterion 1A", Weight = 2, ClassId = string.Empty, Term = 1 },
+                                new Criterion { Id = "criterion-1b", Name = "Criterion 1B", Weight = 1, ClassId = string.Empty, Term = 1 }
                             ]
                         },
-                        new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1, ClassId = "class-1a", Term = 1 }
+                        new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1, ClassId = string.Empty, Term = 1 }
                     ]
                 },
                 new Course
@@ -299,7 +299,7 @@ public class GradesViewModelTests
                     ],
                     Criteria =
                     [
-                        new Criterion { Id = "criterion-3", Name = "Criterion 3", Weight = 1, ClassId = "class-2a", Term = 1 }
+                        new Criterion { Id = "criterion-3", Name = "Criterion 3", Weight = 1, ClassId = string.Empty, Term = 1 }
                     ]
                 }
             ]
