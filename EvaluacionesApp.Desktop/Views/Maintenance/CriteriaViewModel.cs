@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
@@ -10,6 +11,7 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Models;
 using EvaluacionesApp.Desktop.ViewModels;
 
 namespace EvaluacionesApp.Desktop.Views.Maintenance;
@@ -17,14 +19,20 @@ namespace EvaluacionesApp.Desktop.Views.Maintenance;
 public partial class CriteriaViewModel : ReactiveObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
+    private static readonly ReadOnlyObservableCollection<CourseCriterionCopyTarget> EmptyCourseCopyTargets = new(new ObservableCollection<CourseCriterionCopyTarget>());
 
     private readonly DynamicSchoolStore store;
     private readonly CompositeDisposable anchors = new();
+    private readonly SourceCache<CourseCriterionCopyTarget, string> courseCopyTargetsCache = new(target => target.CourseId);
+    private readonly Dictionary<DynamicCourse, IDisposable> courseSubscriptions = new();
+    private readonly Dictionary<DynamicCourse, CourseCriterionCopyTarget> courseCopyTargetsByCourse = new();
     private CompositeDisposable? courseAnchors;
     private DynamicRoot? root;
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
+
+    private ReadOnlyObservableCollection<CourseCriterionCopyTarget> courseCopyTargets = EmptyCourseCopyTargets;
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
@@ -35,17 +43,30 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<ScopedCriterionNode> Criteria { get; }
 
+    public ReadOnlyObservableCollection<CourseCriterionCopyTarget> CourseCopyTargets => courseCopyTargets;
+
     public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
     public ReactiveCommand<Unit, Unit> DeleteCriterion { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
+    public ReactiveCommand<CriterionCopyTarget?, Unit> CopyCriteria { get; }
 
     public CriteriaViewModel(DynamicSchoolStore store)
     {
         this.store = store;
         Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaInternal);
+        courseCopyTargetsCache.Connect()
+            .OnItemRemoved(DisposeCourseCopyTarget)
+            .AutoRefresh(target => target.CourseOrder)
+            .AutoRefresh(target => target.CourseName)
+            .Sort(SortExpressionComparer<CourseCriterionCopyTarget>
+                .Ascending(target => target.CourseOrder)
+                .ThenByAscending(target => target.CourseName))
+            .Bind(out courseCopyTargets)
+            .Subscribe()
+            .DisposeWith(anchors);
         var hasCourse = this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedClass)
             .Select(tuple => tuple.Item1 != null && tuple.Item2 != null);
         var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
@@ -54,6 +75,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
         DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, hasCriterion);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        CopyCriteria = ReactiveCommand.CreateFromTask<CriterionCopyTarget?>(DoCopyCriteria, hasCourse);
         _ = Load();
     }
 
@@ -61,11 +83,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     {
         root = await store.GetRoot();
         Courses = root.Courses;
-        SelectedCourse = Courses.FirstOrDefault();
-        SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
-        SelectedTerm = 1;
-        RefreshCriteria();
-        SelectedNode = Criteria.FirstOrDefault();
+        RegisterExistingCourses(root);
 
         this.WhenAnyValue(x => x.SelectedCourse)
             .Subscribe(HandleSelectedCourseChanged)
@@ -74,6 +92,125 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         this.WhenAnyValue(x => x.SelectedClass, x => x.SelectedTerm)
             .Subscribe(_ => RefreshCriteria())
             .DisposeWith(anchors);
+
+        root.CoursesChanges
+            .Subscribe(HandleCoursesChanged)
+            .DisposeWith(anchors);
+
+        SelectedTerm = 1;
+        SelectedCourse = Courses.FirstOrDefault();
+    }
+
+    void RegisterExistingCourses(DynamicRoot currentRoot)
+    {
+        foreach (var course in currentRoot.Courses)
+        {
+            RegisterCourse(course);
+        }
+    }
+
+    void HandleCoursesChanged(IChangeSet<DynamicCourse, string> changes)
+    {
+        foreach (var change in changes)
+        {
+            switch (change.Reason)
+            {
+                case ChangeReason.Add:
+                    RegisterCourse(change.Current);
+                    break;
+                case ChangeReason.Remove:
+                    UnregisterCourse(change.Current);
+                    break;
+            }
+        }
+    }
+
+    void RegisterCourse(DynamicCourse course)
+    {
+        if (courseSubscriptions.ContainsKey(course))
+        {
+            return;
+        }
+
+        var target = GetOrCreateCourseCopyTarget(course);
+
+        foreach (var cls in course.Classes)
+        {
+            target.AddOrUpdateClass(cls);
+        }
+
+        var subscription = course.ClassesChanges.Subscribe(changes => HandleCourseClassChanges(course, changes));
+        courseSubscriptions[course] = subscription;
+    }
+
+    void UnregisterCourse(DynamicCourse course)
+    {
+        if (courseSubscriptions.Remove(course, out var subscription))
+        {
+            subscription.Dispose();
+        }
+
+        RemoveCourseCopyTarget(course);
+    }
+
+    CourseCriterionCopyTarget GetOrCreateCourseCopyTarget(DynamicCourse course)
+    {
+        if (courseCopyTargetsByCourse.TryGetValue(course, out var existing))
+        {
+            return existing;
+        }
+
+        var target = new CourseCriterionCopyTarget(course);
+        courseCopyTargetsByCourse[course] = target;
+        courseCopyTargetsCache.AddOrUpdate(target);
+        return target;
+    }
+
+    void RemoveCourseCopyTarget(DynamicCourse course)
+    {
+        if (!courseCopyTargetsByCourse.Remove(course, out _))
+        {
+            return;
+        }
+
+        courseCopyTargetsCache.RemoveKey(course.Id);
+    }
+
+    void DisposeCourseCopyTarget(CourseCriterionCopyTarget target)
+    {
+        target.Dispose();
+    }
+
+    void HandleCourseClassChanges(DynamicCourse course, IChangeSet<DynamicClass, string> changes)
+    {
+        foreach (var change in changes)
+        {
+            switch (change.Reason)
+            {
+                case ChangeReason.Add:
+                case ChangeReason.Update:
+                    GetOrCreateCourseCopyTarget(course).AddOrUpdateClass(change.Current);
+                    break;
+                case ChangeReason.Remove:
+                    RemoveClassFromCourseTarget(course, change.Current);
+                    break;
+            }
+        }
+    }
+
+    void RemoveClassFromCourseTarget(DynamicCourse course, DynamicClass cls)
+    {
+        if (!courseCopyTargetsByCourse.TryGetValue(course, out var target))
+        {
+            return;
+        }
+
+        target.RemoveClass(cls);
+
+        if (target.IsEmpty)
+        {
+            RemoveCourseCopyTarget(course);
+        }
     }
 
     void HandleSelectedCourseChanged(DynamicCourse? course)
@@ -226,6 +363,54 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         await ExecuteSave();
     }
 
+    async Task DoCopyCriteria(CriterionCopyTarget? target)
+    {
+        if (target == null || SelectedCourse == null || SelectedClass == null)
+        {
+            return;
+        }
+
+        var destinationCourse = target.Course;
+        var destinationClass = target.Class;
+        var destinationTerm = target.Term;
+
+        var clones = Criteria
+            .Select(node => CloneCriterion(node, destinationClass, destinationTerm))
+            .ToList();
+
+        var toRemove = destinationCourse.Criteria
+            .Where(rootCriterion => rootCriterion.MatchesTreeScope(destinationClass.Id, destinationTerm))
+            .ToList();
+
+        foreach (var criterion in toRemove)
+        {
+            destinationCourse.RemoveCriterion(criterion);
+        }
+
+        foreach (var clone in clones)
+        {
+            destinationCourse.AddCriterion(clone);
+        }
+
+        await ExecuteSave();
+    }
+
+    Models.Criterion CloneCriterion(ScopedCriterionNode node, DynamicClass destinationClass, int destinationTerm)
+    {
+        var criterion = node.Criterion;
+        var model = new Models.Criterion
+        {
+            Id = criterion.Id,
+            Name = criterion.Name,
+            Weight = criterion.Weight,
+            ClassId = string.IsNullOrWhiteSpace(criterion.ClassId) ? criterion.ClassId ?? string.Empty : destinationClass.Id,
+            Term = criterion.Term.HasValue ? destinationTerm : criterion.Term,
+            Children = node.Children.Select(child => CloneCriterion(child, destinationClass, destinationTerm)).ToList()
+        };
+
+        return model;
+    }
+
     async Task ExecuteSave()
     {
         await store.SaveAsync();
@@ -251,5 +436,19 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     {
         courseAnchors?.Dispose();
         anchors.Dispose();
+        foreach (var subscription in courseSubscriptions.Values.ToList())
+        {
+            subscription.Dispose();
+        }
+
+        courseSubscriptions.Clear();
+
+        foreach (var target in courseCopyTargetsCache.Items.ToList())
+        {
+            target.Dispose();
+        }
+
+        courseCopyTargetsCache.Dispose();
+        courseCopyTargetsByCourse.Clear();
     }
 }
