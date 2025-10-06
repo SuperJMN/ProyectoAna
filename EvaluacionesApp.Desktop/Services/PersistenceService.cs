@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -79,7 +80,9 @@ public class PersistenceService
             }
             await using var s = File.OpenRead(DataPath);
             var root = await JsonSerializer.DeserializeAsync<Root>(s, options);
-            return root ?? new Root();
+            var result = root ?? new Root();
+            EnsureCourseTerms(result);
+            return result;
         }
         catch
         {
@@ -158,5 +161,48 @@ public class PersistenceService
                 }
             }
         }
+    }
+
+    static void EnsureCourseTerms(Root root)
+    {
+        foreach (var course in root.Courses)
+        {
+            if (course.Terms.Count == 0)
+            {
+                course.Terms = DeriveTerms(course.Criteria);
+            }
+            else
+            {
+                course.Terms = course.Terms
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+        }
+    }
+
+    static List<int> DeriveTerms(IEnumerable<Criterion> criteria)
+    {
+        var set = new HashSet<int>();
+
+        void Walk(IEnumerable<Criterion> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Term.HasValue)
+                {
+                    set.Add(node.Term.Value);
+                }
+
+                if (node.Children.Count > 0)
+                {
+                    Walk(node.Children);
+                }
+            }
+        }
+
+        Walk(criteria);
+        set.Add(1);
+        return set.Count > 0 ? set.OrderBy(x => x).ToList() : new List<int> { 1, 2, 3 };
     }
 }

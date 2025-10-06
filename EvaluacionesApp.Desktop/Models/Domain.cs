@@ -17,6 +17,7 @@ public class Course
     public string Name { get; set; } = string.Empty;
     public int? Number { get; set; }
     public List<Class> Classes { get; set; } = new();
+    public List<int> Terms { get; set; } = new();
     public List<Criterion> Criteria { get; set; } = new();
 }
 

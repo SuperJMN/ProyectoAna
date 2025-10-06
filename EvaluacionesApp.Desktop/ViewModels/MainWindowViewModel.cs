@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -25,7 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public ObservableCollection<ScoreRowVm> ScoreRows { get; } = new();
 
-    public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
+    public ObservableCollection<int> Terms { get; } = new();
 
     [Reactive]
     private int selectedTerm = 1;
@@ -47,8 +48,18 @@ public partial class MainWindowViewModel : ViewModelBase
     [Reactive]
     private bool isDirty;
 
+    readonly NotifyCollectionChangedEventHandler termCollectionChanged;
+
     public MainWindowViewModel()
     {
+        termCollectionChanged = (_, _) =>
+        {
+            UpdateTerms();
+            EnsureSelectedTermExists();
+            BuildScoreRows();
+            this.RaisePropertyChanged(nameof(LeafCriteria));
+        };
+
         persistence = new PersistenceService(Path.Combine(Directory.GetCurrentDirectory(), "persistencia.json"));
         var canCourse = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
         var canStudent = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
@@ -81,6 +92,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // Auto-select first course/class if present
         SelectedCourse = Courses.FirstOrDefault();
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
+
+        UpdateTerms();
+        EnsureSelectedTermExists();
 
         BuildScoreRows();
 
@@ -154,10 +168,18 @@ public partial class MainWindowViewModel : ViewModelBase
     void DoAddCourse()
     {
         var idx = Courses.Count + 1;
-        var model = new Course { Id = $"course-{idx}", Name = $"Course {idx}" };
+        var defaultTerms = Terms.Count > 0 ? Terms.ToList() : new List<int> { 1, 2, 3 };
+        var model = new Course
+        {
+            Id = $"course-{idx}",
+            Name = $"Course {idx}",
+            Terms = defaultTerms
+        };
         var vm = new CourseVm(model);
         Courses.Add(vm);
         SelectedCourse = vm;
+        UpdateTerms();
+        EnsureSelectedTermExists();
     }
 
     void DoAddClass()
@@ -226,10 +248,26 @@ public partial class MainWindowViewModel : ViewModelBase
 
     void HookSelectionSubscriptions()
     {
+        CourseVm? previousCourse = null;
+
         this.WhenAnyValue(x => x.SelectedCourse)
             .Subscribe(value =>
             {
+                if (previousCourse != null)
+                {
+                    previousCourse.Terms.CollectionChanged -= termCollectionChanged;
+                }
+
+                if (value != null)
+                {
+                    value.Terms.CollectionChanged += termCollectionChanged;
+                }
+
+                previousCourse = value;
+
                 SelectedClass = value?.Classes.FirstOrDefault();
+                UpdateTerms();
+                EnsureSelectedTermExists();
                 BuildScoreRows();
                 this.RaisePropertyChanged(nameof(LeafCriteria));
             });
@@ -309,5 +347,39 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         return criterionTerm.Value == selectedTerm;
+    }
+
+    void UpdateTerms()
+    {
+        Terms.Clear();
+        if (SelectedCourse == null)
+        {
+            Terms.Add(SelectedTerm);
+            return;
+        }
+
+        IEnumerable<int> source = SelectedCourse.Terms.Count > 0
+            ? SelectedCourse.Terms
+            : new[] { 1, 2, 3 };
+
+        foreach (var term in source.Distinct().OrderBy(x => x))
+        {
+            Terms.Add(term);
+        }
+
+        if (Terms.Count == 0)
+        {
+            Terms.Add(1);
+            Terms.Add(2);
+            Terms.Add(3);
+        }
+    }
+
+    void EnsureSelectedTermExists()
+    {
+        if (!Terms.Contains(SelectedTerm))
+        {
+            SelectedTerm = Terms.First();
+        }
     }
 }
