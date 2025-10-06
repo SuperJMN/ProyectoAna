@@ -3,8 +3,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:EvaluacionesApp.Desktop.Views.Converters"
+             xmlns:controls="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Desktop.Views.Maintenance.CriteriaView"
+             x:Name="CriteriaViewRoot"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Views.Maintenance"
              x:DataType="vm:CriteriaViewModel">
   <UserControl.Resources>
@@ -32,6 +34,31 @@
       <Button Content="Add Root" Command="{Binding AddRootCriterion}" Margin="12,0,0,0"/>
       <Button Content="Add Child" Command="{Binding AddChildCriterion}"/>
       <Button Content="Delete" Command="{Binding DeleteCriterion}"/>
+      <Button Content="Copiar criterios" Margin="12,0,0,0">
+        <Button.Flyout>
+          <controls:MenuFlyout ItemsSource="{Binding CourseCopyTargets}">
+            <controls:MenuFlyout.ItemTemplate>
+              <DataTemplate x:DataType="vm:CourseCriterionCopyTarget">
+                <controls:MenuItem Header="{Binding CourseName}" ItemsSource="{Binding Classes}">
+                  <controls:MenuItem.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ClassCriterionCopyTarget">
+                      <controls:MenuItem Header="{Binding ClassName}" ItemsSource="{Binding Terms}">
+                        <controls:MenuItem.ItemTemplate>
+                          <DataTemplate x:DataType="vm:TermCriterionCopyTarget">
+                            <controls:MenuItem Header="{Binding TermName}"
+                                               Command="{Binding #CriteriaViewRoot.DataContext.CopyCriteria}"
+                                               CommandParameter="{Binding Target}"/>
+                          </DataTemplate>
+                        </controls:MenuItem.ItemTemplate>
+                      </controls:MenuItem>
+                    </DataTemplate>
+                  </controls:MenuItem.ItemTemplate>
+                </controls:MenuItem>
+              </DataTemplate>
+            </controls:MenuFlyout.ItemTemplate>
+          </controls:MenuFlyout>
+        </Button.Flyout>
+      </Button>
     </StackPanel>
     <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Criteria}" SelectedItem="{Binding SelectedNode}">
       <TreeView.ItemTemplate>
