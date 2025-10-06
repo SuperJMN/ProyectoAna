@@ -398,17 +398,20 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     Models.Criterion CloneCriterion(ScopedCriterionNode node, DynamicClass destinationClass, int destinationTerm)
     {
         var criterion = node.Criterion;
-        var model = new Models.Criterion
+        var classId = string.IsNullOrWhiteSpace(criterion.ClassId) ? string.Empty : destinationClass.Id;
+        var term = criterion.Term.HasValue ? destinationTerm : criterion.Term;
+
+        return new Models.Criterion
         {
-            Id = criterion.Id,
+            Id = Guid.NewGuid().ToString(),
             Name = criterion.Name,
             Weight = criterion.Weight,
-            ClassId = string.IsNullOrWhiteSpace(criterion.ClassId) ? criterion.ClassId ?? string.Empty : destinationClass.Id,
-            Term = criterion.Term.HasValue ? destinationTerm : criterion.Term,
-            Children = node.Children.Select(child => CloneCriterion(child, destinationClass, destinationTerm)).ToList()
+            ClassId = classId,
+            Term = term,
+            Children = node.Children
+                .Select(child => CloneCriterion(child, destinationClass, destinationTerm))
+                .ToList()
         };
-
-        return model;
     }
 
     async Task ExecuteSave()
