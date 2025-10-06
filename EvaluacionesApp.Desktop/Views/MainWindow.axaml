@@ -7,7 +7,7 @@
         Width="1000" Height="800"
         WindowStartupLocation="CenterScreen"
         x:Class="EvaluacionesApp.Desktop.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/app.png"
         Title="EvaluacionesApp.Desktop">
     <shell:MainView />
 </Window>
