@@ -93,5 +93,4 @@ public class Assessment
     public string StudentId { get; set; } = string.Empty;
     public string CriterionId { get; set; } = string.Empty;
     public double? Score { get; set; }
-    public int? Term { get; set; }
 }

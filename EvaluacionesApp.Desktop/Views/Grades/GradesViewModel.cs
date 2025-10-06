@@ -310,7 +310,7 @@ public partial class ScoreRow : ReactiveObject, IDisposable
 
         foreach (var criterion in criteria)
         {
-            var assessment = cls.GetOrCreateAssessment(student.Id, criterion.Id, term);
+            var assessment = cls.GetOrCreateAssessment(student.Id, criterion.Id);
             assessments.AddOrUpdate(assessment);
         }
 
@@ -381,7 +381,7 @@ public partial class ScoreRow : ReactiveObject, IDisposable
             return optional.Value;
         }
 
-        var assessment = @class.GetOrCreateAssessment(Student.Id, criterionId, Term);
+        var assessment = @class.GetOrCreateAssessment(Student.Id, criterionId);
         assessments.AddOrUpdate(assessment);
         return assessment;
     }

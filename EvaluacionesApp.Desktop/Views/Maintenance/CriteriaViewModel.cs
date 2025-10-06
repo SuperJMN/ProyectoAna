@@ -390,11 +390,10 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        var effectiveTerm = criterion.EffectiveTerm ?? 1;
         var hasAssessments = SelectedCourse.Classes
             .Where(c => string.IsNullOrWhiteSpace(criterion.ClassId) || c.Id == criterion.ClassId)
             .SelectMany(c => c.Assessments)
-            .Any(a => a.CriterionId == criterion.Id && (a.Term ?? 1) == effectiveTerm);
+            .Any(a => a.CriterionId == criterion.Id);
         if (hasAssessments)
         {
             return;

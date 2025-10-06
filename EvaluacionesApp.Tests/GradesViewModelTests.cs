@@ -178,7 +178,7 @@ public class GradesViewModelTests
         Assert.Null(binding.Value);
         var cls = viewModel.SelectedClass!;
         Assert.Contains(cls.Assessments, assessment =>
-            assessment.StudentId == row.Student.Id && assessment.CriterionId == "criterion-extra" && assessment.Term == viewModel.SelectedTerm);
+            assessment.StudentId == row.Student.Id && assessment.CriterionId == "criterion-extra");
     }
 
     [Fact]
