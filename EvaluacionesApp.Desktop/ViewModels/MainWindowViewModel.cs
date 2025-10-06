@@ -135,6 +135,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var leafCriteria = LeafCriteria.Select(c => c.Id).ToHashSet();
             var updates = new List<Assessment>();
+            var criterionTerms = BuildCriterionTermLookup(SelectedCourse);
             foreach (var row in ScoreRows)
             {
                 foreach (var kv in row.Scores)
@@ -146,8 +147,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         {
                             StudentId = row.Student.Id,
                             CriterionId = kv.Key,
-                            Score = v,
-                            Term = SelectedTerm
+                            Score = v
                         });
                     }
                 }
@@ -157,6 +157,7 @@ public partial class MainWindowViewModel : ViewModelBase
             model.Assessments = AssessmentUtilities.MergeAssessments(
                 model.Assessments,
                 updates,
+                criterionTerms,
                 SelectedTerm);
         }
 
@@ -285,7 +286,8 @@ public partial class MainWindowViewModel : ViewModelBase
         if (SelectedClass == null || SelectedCourse == null) return;
 
         var leafCriteria = GetLeafCriteria(SelectedCourse, SelectedClass, SelectedTerm);
-        var existing = AssessmentUtilities.BuildScoreLookup(SelectedClass.Model.Assessments, SelectedTerm);
+        var criterionTerms = BuildCriterionTermLookup(SelectedCourse);
+        var existing = AssessmentUtilities.BuildScoreLookup(SelectedClass.Model.Assessments, criterionTerms, SelectedTerm);
 
         foreach (var s in SelectedClass.Students)
         {
@@ -299,6 +301,28 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             ScoreRows.Add(row);
         }
+    }
+
+    static Dictionary<string, int?> BuildCriterionTermLookup(CourseVm course)
+    {
+        var map = new Dictionary<string, int?>();
+
+        void Walk(IEnumerable<CriterionVm> nodes, int? inheritedTerm)
+        {
+            foreach (var node in nodes)
+            {
+                var effectiveTerm = node.Term ?? inheritedTerm;
+                map[node.Id] = effectiveTerm;
+
+                if (node.Children.Count > 0)
+                {
+                    Walk(node.Children, effectiveTerm);
+                }
+            }
+        }
+
+        Walk(course.Criteria, null);
+        return map;
     }
 
     static List<CriterionVm> GetLeafCriteria(CourseVm course, ClassVm? cls, int term)

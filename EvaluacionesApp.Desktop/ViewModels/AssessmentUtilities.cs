@@ -9,9 +9,11 @@ internal static class AssessmentUtilities
 {
     public static Dictionary<(string studentId, string criterionId), double?> BuildScoreLookup(
         IEnumerable<Assessment> assessments,
+        IReadOnlyDictionary<string, int?> criterionTerms,
         int selectedTerm)
     {
         ArgumentNullException.ThrowIfNull(assessments);
+        ArgumentNullException.ThrowIfNull(criterionTerms);
 
         var map = new Dictionary<(string studentId, string criterionId), double?>();
 
@@ -23,14 +25,18 @@ internal static class AssessmentUtilities
             }
 
             var key = (assessment.StudentId, assessment.CriterionId);
+            var term = ResolveTerm(criterionTerms, assessment.CriterionId);
 
-            if (assessment.Term == selectedTerm)
+            if (term.HasValue)
             {
-                map[key] = assessment.Score;
+                if (term.Value == selectedTerm)
+                {
+                    map[key] = assessment.Score;
+                }
                 continue;
             }
 
-            if (!assessment.Term.HasValue && selectedTerm == 1 && !map.ContainsKey(key))
+            if (selectedTerm == 1 && !map.ContainsKey(key))
             {
                 map[key] = assessment.Score;
             }
@@ -42,10 +48,12 @@ internal static class AssessmentUtilities
     public static List<Assessment> MergeAssessments(
         IEnumerable<Assessment> existing,
         IEnumerable<Assessment> updates,
+        IReadOnlyDictionary<string, int?> criterionTerms,
         int selectedTerm)
     {
         ArgumentNullException.ThrowIfNull(existing);
         ArgumentNullException.ThrowIfNull(updates);
+        ArgumentNullException.ThrowIfNull(criterionTerms);
 
         var updateList = updates
             .Where(a => !string.IsNullOrWhiteSpace(a.StudentId) && !string.IsNullOrWhiteSpace(a.CriterionId))
@@ -65,10 +73,11 @@ internal static class AssessmentUtilities
             }
 
             var key = (assessment.StudentId, assessment.CriterionId);
+            var term = ResolveTerm(criterionTerms, assessment.CriterionId);
 
-            if (assessment.Term.HasValue)
+            if (term.HasValue)
             {
-                if (assessment.Term.Value != selectedTerm)
+                if (term.Value != selectedTerm)
                 {
                     preserved.Add(assessment);
                 }
@@ -76,7 +85,7 @@ internal static class AssessmentUtilities
                 continue;
             }
 
-            if (!updatesByKey.ContainsKey(key))
+            if (selectedTerm != 1 || !updatesByKey.ContainsKey(key))
             {
                 preserved.Add(assessment);
             }
@@ -84,5 +93,15 @@ internal static class AssessmentUtilities
 
         preserved.AddRange(updatesByKey.Values);
         return preserved;
+    }
+
+    static int? ResolveTerm(IReadOnlyDictionary<string, int?> terms, string criterionId)
+    {
+        if (string.IsNullOrWhiteSpace(criterionId))
+        {
+            return null;
+        }
+
+        return terms.TryGetValue(criterionId, out var term) ? term : null;
     }
 }

@@ -64,7 +64,7 @@ public partial class DynamicClass : ReactiveObject, IDisposable
 
         foreach (var a in model.Assessments)
         {
-            var assessment = new DynamicAssessment(a.StudentId ?? string.Empty, a.CriterionId ?? string.Empty, a.Term, a.Score);
+            var assessment = new DynamicAssessment(a.StudentId ?? string.Empty, a.CriterionId ?? string.Empty, a.Score);
             RegisterAssessment(assessment);
             assessmentsCache.AddOrUpdate(assessment);
         }
@@ -100,15 +100,15 @@ public partial class DynamicClass : ReactiveObject, IDisposable
         }
     }
 
-    public DynamicAssessment GetOrCreateAssessment(string studentId, string criterionId, int? term)
+    public DynamicAssessment GetOrCreateAssessment(string studentId, string criterionId)
     {
-        var key = new AssessmentKey(studentId, criterionId, term);
+        var key = new AssessmentKey(studentId, criterionId);
         if (assessmentsCache.Lookup(key).HasValue)
         {
             return assessmentsCache.Lookup(key).Value;
         }
 
-        var assessment = new DynamicAssessment(studentId, criterionId, term, null);
+        var assessment = new DynamicAssessment(studentId, criterionId, null);
         RegisterAssessment(assessment);
         assessmentsCache.AddOrUpdate(assessment);
         return assessment;

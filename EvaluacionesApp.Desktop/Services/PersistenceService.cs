@@ -79,8 +79,8 @@ public class PersistenceService
                 return new Root();
             }
             await using var s = File.OpenRead(DataPath);
-            var root = await JsonSerializer.DeserializeAsync<Root>(s, options);
-            var result = root ?? new Root();
+            var persisted = await JsonSerializer.DeserializeAsync<PersistedRoot>(s, options);
+            var result = ConvertToDomain(persisted);
             EnsureCourseTerms(result);
             return result;
         }
@@ -108,7 +108,8 @@ public class PersistenceService
             var tempPath = DataPath + ".tmp";
             await using (var s = File.Create(tempPath))
             {
-                await JsonSerializer.SerializeAsync(s, root, options);
+                var persisted = ConvertToPersisted(root);
+                await JsonSerializer.SerializeAsync(s, persisted, options);
                 await s.FlushAsync();
             }
             
@@ -147,20 +148,333 @@ public class PersistenceService
                 // Only clean if there are duplicates
                 var originalCount = cls.Assessments.Count;
                 var uniqueKeys = cls.Assessments
-                    .Select(a => (a.StudentId, a.CriterionId, a.Term))
+                    .Select(a => (a.StudentId, a.CriterionId))
                     .Distinct()
                     .Count();
-                    
+
                 if (originalCount > uniqueKeys)
                 {
-                    // Group assessments by (studentId, criterionId, term) and take the last one
+                    // Group assessments by (studentId, criterionId) and take the last one
                     cls.Assessments = cls.Assessments
-                        .GroupBy(a => (a.StudentId, a.CriterionId, a.Term))
+                        .GroupBy(a => (a.StudentId, a.CriterionId))
                         .Select(g => g.Last())
                         .ToList();
                 }
             }
         }
+    }
+
+    static Root ConvertToDomain(PersistedRoot? persisted)
+    {
+        if (persisted == null)
+        {
+            return new Root();
+        }
+
+        var root = new Root
+        {
+            Version = string.IsNullOrWhiteSpace(persisted.Version) ? "1.0" : persisted.Version,
+            Courses = persisted.Courses?.Select(ConvertCourseToDomain).ToList() ?? new List<Course>()
+        };
+
+        return root;
+    }
+
+    static Course ConvertCourseToDomain(PersistedCourse source)
+    {
+        var course = new Course
+        {
+            Id = source.Id ?? string.Empty,
+            Name = source.Name ?? string.Empty,
+            Number = source.Number,
+            Terms = source.Terms?.Distinct().OrderBy(x => x).ToList() ?? new List<int>(),
+            Classes = source.Classes?.Select(ConvertClassToDomain).ToList() ?? new List<Class>(),
+            Criteria = new List<Criterion>()
+        };
+
+        if (source.Classes != null)
+        {
+            foreach (var cls in source.Classes)
+            {
+                course.Criteria.AddRange(ConvertAssessmentsToCriteria(cls));
+            }
+        }
+
+        return course;
+    }
+
+    static Class ConvertClassToDomain(PersistedClass source)
+    {
+        return new Class
+        {
+            Id = source.Id ?? string.Empty,
+            Name = source.Name ?? string.Empty,
+            Students = source.Students?.Select(ConvertStudentToDomain).ToList() ?? new List<Student>(),
+            Assessments = source.Scores?.Select(ConvertScoreToDomain).ToList() ?? new List<Assessment>()
+        };
+    }
+
+    static Student ConvertStudentToDomain(PersistedStudent source)
+    {
+        return new Student
+        {
+            Id = source.Id ?? Guid.NewGuid().ToString(),
+            FirstName = source.FirstName ?? string.Empty,
+            LastName = source.LastName ?? string.Empty,
+            Positivos = Math.Max(0, source.Positivos),
+            Negativos = Math.Max(0, source.Negativos),
+            Observaciones = source.Observaciones ?? string.Empty
+        };
+    }
+
+    static Assessment ConvertScoreToDomain(PersistedScore source)
+    {
+        return new Assessment
+        {
+            StudentId = source.StudentId ?? string.Empty,
+            CriterionId = source.AssessmentId ?? string.Empty,
+            Score = source.Value
+        };
+    }
+
+    static IEnumerable<Criterion> ConvertAssessmentsToCriteria(PersistedClass source)
+    {
+        if (source.Assessments == null || source.Assessments.Count == 0)
+        {
+            return Array.Empty<Criterion>();
+        }
+
+        var nodes = new Dictionary<string, Criterion>(StringComparer.Ordinal);
+
+        foreach (var assessment in source.Assessments)
+        {
+            if (string.IsNullOrWhiteSpace(assessment.Id))
+            {
+                continue;
+            }
+
+            var criterion = new Criterion
+            {
+                Id = assessment.Id,
+                Name = assessment.Name ?? string.Empty,
+                Weight = assessment.Weight,
+                ClassId = source.Id ?? string.Empty,
+                Term = assessment.Term,
+                Children = new List<Criterion>()
+            };
+
+            nodes[assessment.Id] = criterion;
+        }
+
+        foreach (var assessment in source.Assessments)
+        {
+            if (string.IsNullOrWhiteSpace(assessment.Id))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(assessment.ParentId)
+                && nodes.TryGetValue(assessment.ParentId, out var parent)
+                && nodes.TryGetValue(assessment.Id, out var child))
+            {
+                parent.Children.Add(child);
+            }
+        }
+
+        var roots = new List<Criterion>();
+        foreach (var assessment in source.Assessments)
+        {
+            if (string.IsNullOrWhiteSpace(assessment.Id))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(assessment.ParentId) || !nodes.ContainsKey(assessment.ParentId))
+            {
+                roots.Add(nodes[assessment.Id]);
+            }
+        }
+
+        return roots;
+    }
+
+    static PersistedRoot ConvertToPersisted(Root root)
+    {
+        return new PersistedRoot
+        {
+            Version = string.IsNullOrWhiteSpace(root.Version) ? "1.0" : root.Version,
+            Courses = root.Courses.Select(ConvertCourseToPersisted).ToList()
+        };
+    }
+
+    static PersistedCourse ConvertCourseToPersisted(Course course)
+    {
+        var flattenedCriteria = FlattenCriteria(course);
+        var criteriaByClass = flattenedCriteria
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.ClassId))
+            .GroupBy(entry => entry.ClassId!, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.Ordinal);
+
+        var classes = new List<PersistedClass>();
+
+        foreach (var cls in course.Classes)
+        {
+            var entries = criteriaByClass.TryGetValue(cls.Id, out var list) ? list : new List<CriterionEntry>();
+            classes.Add(ConvertClassToPersisted(cls, entries));
+        }
+
+        // Preserve orphaned criteria by creating lightweight classes so information is not lost.
+        foreach (var group in criteriaByClass)
+        {
+            if (course.Classes.Any(c => string.Equals(c.Id, group.Key, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            classes.Add(new PersistedClass
+            {
+                Id = group.Key,
+                Name = group.Key,
+                Students = new List<PersistedStudent>(),
+                Assessments = group.Value.Select(CreatePersistedAssessment).ToList(),
+                Scores = new List<PersistedScore>()
+            });
+        }
+
+        return new PersistedCourse
+        {
+            Id = course.Id ?? string.Empty,
+            Name = course.Name ?? string.Empty,
+            Number = course.Number,
+            Terms = course.Terms?.Distinct().OrderBy(x => x).ToList() ?? new List<int>(),
+            Classes = classes
+        };
+    }
+
+    static PersistedClass ConvertClassToPersisted(Class cls, List<CriterionEntry> criteria)
+    {
+        return new PersistedClass
+        {
+            Id = cls.Id ?? string.Empty,
+            Name = cls.Name ?? string.Empty,
+            Students = cls.Students?.Select(ConvertStudentToPersisted).ToList() ?? new List<PersistedStudent>(),
+            Assessments = criteria.Select(CreatePersistedAssessment).ToList(),
+            Scores = cls.Assessments?.Select(ConvertScoreToPersisted).ToList() ?? new List<PersistedScore>()
+        };
+    }
+
+    static PersistedAssessment CreatePersistedAssessment(CriterionEntry entry)
+    {
+        var criterion = entry.Criterion;
+        return new PersistedAssessment
+        {
+            Id = criterion.Id,
+            Name = criterion.Name,
+            Term = criterion.Term,
+            Weight = Math.Clamp(criterion.Weight, 0, 1),
+            ParentId = entry.ParentId
+        };
+    }
+
+    static PersistedStudent ConvertStudentToPersisted(Student student)
+    {
+        return new PersistedStudent
+        {
+            Id = student.Id,
+            FirstName = student.FirstName,
+            LastName = student.LastName,
+            Positivos = Math.Max(0, student.Positivos),
+            Negativos = Math.Max(0, student.Negativos),
+            Observaciones = student.Observaciones ?? string.Empty
+        };
+    }
+
+    static PersistedScore ConvertScoreToPersisted(Assessment assessment)
+    {
+        return new PersistedScore
+        {
+            StudentId = assessment.StudentId,
+            AssessmentId = assessment.CriterionId,
+            Value = assessment.Score
+        };
+    }
+
+    static List<CriterionEntry> FlattenCriteria(Course course)
+    {
+        var result = new List<CriterionEntry>();
+
+        void Walk(Criterion criterion, string? parentId, string? inheritedClassId)
+        {
+            var effectiveClassId = string.IsNullOrWhiteSpace(criterion.ClassId)
+                ? inheritedClassId
+                : criterion.ClassId;
+
+            result.Add(new CriterionEntry(effectiveClassId, parentId, criterion));
+
+            foreach (var child in criterion.Children)
+            {
+                Walk(child, criterion.Id, effectiveClassId);
+            }
+        }
+
+        foreach (var root in course.Criteria)
+        {
+            Walk(root, null, null);
+        }
+
+        return result;
+    }
+
+    private sealed record CriterionEntry(string? ClassId, string? ParentId, Criterion Criterion);
+
+    private sealed class PersistedRoot
+    {
+        public string? Version { get; set; }
+        public List<PersistedCourse> Courses { get; set; } = new();
+    }
+
+    private sealed class PersistedCourse
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public int? Number { get; set; }
+        public List<int> Terms { get; set; } = new();
+        public List<PersistedClass> Classes { get; set; } = new();
+    }
+
+    private sealed class PersistedClass
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public List<PersistedStudent> Students { get; set; } = new();
+        public List<PersistedAssessment> Assessments { get; set; } = new();
+        public List<PersistedScore> Scores { get; set; } = new();
+    }
+
+    private sealed class PersistedStudent
+    {
+        public string? Id { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public int Positivos { get; set; }
+        public int Negativos { get; set; }
+        public string? Observaciones { get; set; }
+    }
+
+    private sealed class PersistedAssessment
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public int? Term { get; set; }
+        public double Weight { get; set; }
+        public string? ParentId { get; set; }
+    }
+
+    private sealed class PersistedScore
+    {
+        public string? StudentId { get; set; }
+        public string? AssessmentId { get; set; }
+        public double? Value { get; set; }
     }
 
     static void EnsureCourseTerms(Root root)

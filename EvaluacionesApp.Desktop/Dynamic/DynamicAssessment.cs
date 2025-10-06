@@ -13,21 +13,17 @@ public partial class DynamicAssessment : ReactiveObject
     [Reactive(SetModifier = AccessModifier.Private)]
     private string criterionId;
 
-    [Reactive(SetModifier = AccessModifier.Private)]
-    private int? term;
-
     [Reactive]
     private double? score;
 
-    public DynamicAssessment(string studentId, string criterionId, int? term, double? score)
+    public DynamicAssessment(string studentId, string criterionId, double? score)
     {
         this.studentId = studentId;
         this.criterionId = criterionId;
-        this.term = term;
         this.score = score;
     }
 
-    public AssessmentKey Key => new(StudentId, CriterionId, Term);
+    public AssessmentKey Key => new(StudentId, CriterionId);
 
     public event Action<DynamicAssessment, AssessmentKey>? KeyChanged;
 
@@ -53,24 +49,12 @@ public partial class DynamicAssessment : ReactiveObject
         KeyChanged?.Invoke(this, previous);
     }
 
-    internal void SetTerm(int? newTerm)
-    {
-        if (Term == newTerm)
-        {
-            return;
-        }
-        var previous = Key;
-        Term = newTerm;
-        KeyChanged?.Invoke(this, previous);
-    }
-
     public Assessment ToDomain()
     {
         return new Assessment
         {
             StudentId = StudentId,
             CriterionId = CriterionId,
-            Term = Term,
             Score = Score
         };
     }

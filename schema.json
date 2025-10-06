@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://superjmn.dev/schemas/school-schema.json",
+  "title": "School Data Schema",
+  "description": "Estructura completa: todos los cursos, clases, alumnos, rúbricas y puntuaciones.",
+  "type": "object",
+  "required": ["version", "courses"],
+
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Versión del formato de datos, por ejemplo '1.0'."
+    },
+    "courses": {
+      "type": "array",
+      "description": "Lista de cursos del centro (1º ESO, 2º ESO, 1º BAC...).",
+      "items": { "$ref": "#/definitions/course" }
+    }
+  },
+
+  "definitions": {
+    "course": {
+      "type": "object",
+      "required": ["id", "name", "terms", "classes"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único del curso, ej. '1o-eso'."
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre visible del curso, ej. '1º ESO'."
+        },
+        "number": {
+          "type": "integer",
+          "description": "Número ordinal del curso (1, 2, 3, ...)."
+        },
+        "terms": {
+          "type": "array",
+          "description": "Lista de evaluaciones o trimestres (ej. [1,2,3]).",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "classes": {
+          "type": "array",
+          "description": "Clases pertenecientes a este curso.",
+          "items": { "$ref": "#/definitions/class" }
+        }
+      }
+    },
+
+    "class": {
+      "type": "object",
+      "required": ["id", "name", "students", "assessments", "scores"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Identificador único de la clase, ej. '1o-eso-a--b'."
+        },
+        "name": {
+          "type": "string",
+          "description": "Nombre de la clase (A, B, Diversificación...)."
+        },
+        "students": {
+          "type": "array",
+          "description": "Lista de alumnos de la clase.",
+          "items": { "$ref": "#/definitions/student" }
+        },
+        "assessments": {
+          "type": "array",
+          "description": "Criterios y subcriterios de evaluación definidos para la clase.",
+          "items": { "$ref": "#/definitions/assessment" }
+        },
+        "scores": {
+          "type": "array",
+          "description": "Notas numéricas de los alumnos por criterio.",
+          "items": { "$ref": "#/definitions/score" }
+        }
+      }
+    },
+
+    "student": {
+      "type": "object",
+      "required": ["id", "firstName", "lastName"],
+      "properties": {
+        "id": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "positivos": { "type": "integer", "minimum": 0, "default": 0 },
+        "negativos": { "type": "integer", "minimum": 0, "default": 0 },
+        "observaciones": { "type": "string", "default": "" }
+      }
+    },
+
+    "assessment": {
+      "type": "object",
+      "required": ["id", "name", "weight"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "term": { "type": "integer", "minimum": 1 },
+        "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "parentId": { "type": ["string", "null"] }
+      }
+    },
+
+    "score": {
+      "type": "object",
+      "required": ["studentId", "assessmentId", "value"],
+      "properties": {
+        "studentId": { "type": "string" },
+        "assessmentId": { "type": "string" },
+        "value": { "type": "number", "minimum": 0, "maximum": 10 }
+      }
+    }
+  }
+}

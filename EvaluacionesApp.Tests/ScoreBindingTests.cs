@@ -10,7 +10,7 @@ public class ScoreBindingTests
     [Fact]
     public void Reflects_assessment_value_changes()
     {
-        var assessment = new DynamicAssessment("stu-1", "crit-1", 1, null);
+        var assessment = new DynamicAssessment("stu-1", "crit-1", null);
         var binding = new ScoreBinding(assessment, ImmediateScheduler.Instance);
 
         Assert.Null(binding.Value);

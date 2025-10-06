@@ -110,6 +110,6 @@ public class ScoreRowTests
 
         Assert.Null(binding.Value);
         Assert.Contains(cls.Assessments, assessment =>
-            assessment.StudentId == student.Id && assessment.CriterionId == "crit-extra" && assessment.Term == 1);
+            assessment.StudentId == student.Id && assessment.CriterionId == "crit-extra");
     }
 }
