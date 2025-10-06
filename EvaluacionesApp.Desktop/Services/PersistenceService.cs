@@ -196,7 +196,14 @@ public class PersistenceService
         {
             foreach (var cls in source.Classes)
             {
-                course.Criteria.AddRange(ConvertAssessmentsToCriteria(cls));
+                var criteria = ConvertAssessmentsToCriteria(cls).ToList();
+                if (criteria.Count == 0)
+                {
+                    continue;
+                }
+
+                course.Criteria = criteria;
+                break;
             }
         }
 
@@ -258,7 +265,7 @@ public class PersistenceService
                 Id = assessment.Id,
                 Name = assessment.Name ?? string.Empty,
                 Weight = assessment.Weight,
-                ClassId = source.Id ?? string.Empty,
+                ClassId = string.Empty,
                 Term = assessment.Term,
                 Children = new List<Criterion>()
             };
@@ -310,6 +317,10 @@ public class PersistenceService
     static PersistedCourse ConvertCourseToPersisted(Course course)
     {
         var flattenedCriteria = FlattenCriteria(course);
+        var globalCriteria = flattenedCriteria
+            .Where(entry => string.IsNullOrWhiteSpace(entry.ClassId))
+            .ToList();
+
         var criteriaByClass = flattenedCriteria
             .Where(entry => !string.IsNullOrWhiteSpace(entry.ClassId))
             .GroupBy(entry => entry.ClassId!, StringComparer.Ordinal)
@@ -319,7 +330,18 @@ public class PersistenceService
 
         foreach (var cls in course.Classes)
         {
-            var entries = criteriaByClass.TryGetValue(cls.Id, out var list) ? list : new List<CriterionEntry>();
+            var entries = new List<CriterionEntry>();
+
+            if (globalCriteria.Count > 0)
+            {
+                entries.AddRange(globalCriteria.Select(entry => entry.WithClass(cls.Id)));
+            }
+
+            if (criteriaByClass.TryGetValue(cls.Id, out var list))
+            {
+                entries.AddRange(list);
+            }
+
             classes.Add(ConvertClassToPersisted(cls, entries));
         }
 
@@ -337,6 +359,22 @@ public class PersistenceService
                 Name = group.Key,
                 Students = new List<PersistedStudent>(),
                 Assessments = group.Value.Select(CreatePersistedAssessment).ToList(),
+                Scores = new List<PersistedScore>()
+            });
+        }
+
+        if (classes.Count == 0 && globalCriteria.Count > 0)
+        {
+            var defaultClassId = string.IsNullOrWhiteSpace(course.Id) ? Guid.NewGuid().ToString() : course.Id!;
+            var defaultClassName = string.IsNullOrWhiteSpace(course.Name) ? defaultClassId : course.Name!;
+            classes.Add(new PersistedClass
+            {
+                Id = defaultClassId,
+                Name = defaultClassName,
+                Students = new List<PersistedStudent>(),
+                Assessments = globalCriteria
+                    .Select(entry => CreatePersistedAssessment(entry.WithClass(defaultClassId)))
+                    .ToList(),
                 Scores = new List<PersistedScore>()
             });
         }
@@ -425,7 +463,10 @@ public class PersistenceService
         return result;
     }
 
-    private sealed record CriterionEntry(string? ClassId, string? ParentId, Criterion Criterion);
+    private sealed record CriterionEntry(string? ClassId, string? ParentId, Criterion Criterion)
+    {
+        public CriterionEntry WithClass(string classId) => this with { ClassId = classId };
+    }
 
     private sealed class PersistedRoot
     {

@@ -1,10 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using DynamicData;
-using DynamicData.Binding;
 using EvaluacionesApp.Desktop.Dynamic;
 using ReactiveUI;
 
@@ -13,25 +12,18 @@ namespace EvaluacionesApp.Desktop.Views.Maintenance;
 public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable anchors = new();
-    private readonly SourceCache<ClassCriterionCopyTarget, string> classesCache = new(target => target.Key);
-    private readonly ReadOnlyObservableCollection<ClassCriterionCopyTarget> classes;
+    private readonly ObservableCollection<TermCriterionCopyTarget> termsInternal = new();
+    private readonly ReadOnlyObservableCollection<TermCriterionCopyTarget> terms;
     private string courseName = string.Empty;
     private int courseOrder;
 
     public CourseCriterionCopyTarget(DynamicCourse course)
     {
         Course = course;
-
-        classesCache.Connect()
-            .OnItemRemoved(DisposeClassTarget)
-            .AutoRefresh(target => target.ClassName)
-            .Sort(SortExpressionComparer<ClassCriterionCopyTarget>
-                .Ascending(target => target.ClassName))
-            .Bind(out classes)
-            .Subscribe()
-            .DisposeWith(anchors);
+        terms = new ReadOnlyObservableCollection<TermCriterionCopyTarget>(termsInternal);
 
         UpdateState();
+        UpdateTerms();
 
         course.WhenAnyValue(x => x.Name)
             .ObserveOn(RxApp.MainThreadScheduler)
@@ -41,6 +33,11 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
         course.WhenAnyValue(x => x.Number)
             .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
+            .DisposeWith(anchors);
+
+        course.TermsChanges
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => UpdateTerms())
             .DisposeWith(anchors);
     }
 
@@ -52,37 +49,7 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
 
     public int CourseOrder => courseOrder;
 
-    public ReadOnlyObservableCollection<ClassCriterionCopyTarget> Classes => classes;
-
-    public bool IsEmpty => classes.Count == 0;
-
-    public void AddOrUpdateClass(DynamicClass cls)
-    {
-        var key = ClassMoveTarget.BuildKey(Course, cls);
-        var existing = classesCache.Lookup(key);
-        if (existing.HasValue)
-        {
-            if (!ReferenceEquals(existing.Value.Class, cls))
-            {
-                classesCache.RemoveKey(key);
-                classesCache.AddOrUpdate(new ClassCriterionCopyTarget(Course, cls));
-            }
-
-            return;
-        }
-
-        classesCache.AddOrUpdate(new ClassCriterionCopyTarget(Course, cls));
-    }
-
-    public void RemoveClass(DynamicClass cls)
-    {
-        classesCache.RemoveKey(ClassMoveTarget.BuildKey(Course, cls));
-    }
-
-    void DisposeClassTarget(ClassCriterionCopyTarget target)
-    {
-        target.Dispose();
-    }
+    public ReadOnlyObservableCollection<TermCriterionCopyTarget> Terms => terms;
 
     void UpdateState()
     {
@@ -101,15 +68,23 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
         }
     }
 
+    void UpdateTerms()
+    {
+        termsInternal.Clear();
+
+        var termValues = Course.Terms.Count > 0
+            ? Course.Terms.ToList()
+            : new List<int> { 1, 2, 3 };
+
+        foreach (var term in termValues.Distinct().OrderBy(x => x))
+        {
+            termsInternal.Add(new TermCriterionCopyTarget(new CriterionCopyTarget(Course, term)));
+        }
+    }
+
     public void Dispose()
     {
         anchors.Dispose();
-
-        foreach (var target in classesCache.Items.ToList())
-        {
-            target.Dispose();
-        }
-
-        classesCache.Dispose();
+        termsInternal.Clear();
     }
 }

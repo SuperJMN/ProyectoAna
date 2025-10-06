@@ -25,7 +25,6 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     private readonly DynamicSchoolStore store;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<CourseCriterionCopyTarget, string> courseCopyTargetsCache = new(target => target.CourseId);
-    private readonly Dictionary<DynamicCourse, IDisposable> courseSubscriptions = new();
     private readonly Dictionary<DynamicCourse, CourseCriterionCopyTarget> courseCopyTargetsByCourse = new();
     private CompositeDisposable? courseAnchors;
     private DynamicRoot? root;
@@ -38,7 +37,6 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
-    [Reactive] private DynamicClass? selectedClass;
     [Reactive] private int selectedTerm = 1;
 
     private readonly ObservableCollection<ScopedCriterionNode> criteriaInternal = new();
@@ -74,8 +72,8 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             .Bind(out courseCopyTargets)
             .Subscribe()
             .DisposeWith(anchors);
-        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedClass)
-            .Select(tuple => tuple.Item1 != null && tuple.Item2 != null);
+        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse)
+            .Select(course => course != null);
         var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
 
         AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
@@ -96,7 +94,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             .Subscribe(HandleSelectedCourseChanged)
             .DisposeWith(anchors);
 
-        this.WhenAnyValue(x => x.SelectedClass, x => x.SelectedTerm)
+        this.WhenAnyValue(x => x.SelectedTerm)
             .Subscribe(_ => RefreshCriteria())
             .DisposeWith(anchors);
 
@@ -135,29 +133,11 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     void RegisterCourse(DynamicCourse course)
     {
-        if (courseSubscriptions.ContainsKey(course))
-        {
-            return;
-        }
-
         var target = GetOrCreateCourseCopyTarget(course);
-
-        foreach (var cls in course.Classes)
-        {
-            target.AddOrUpdateClass(cls);
-        }
-
-        var subscription = course.ClassesChanges.Subscribe(changes => HandleCourseClassChanges(course, changes));
-        courseSubscriptions[course] = subscription;
     }
 
     void UnregisterCourse(DynamicCourse course)
     {
-        if (courseSubscriptions.Remove(course, out var subscription))
-        {
-            subscription.Dispose();
-        }
-
         RemoveCourseCopyTarget(course);
     }
 
@@ -189,38 +169,6 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         target.Dispose();
     }
 
-    void HandleCourseClassChanges(DynamicCourse course, IChangeSet<DynamicClass, string> changes)
-    {
-        foreach (var change in changes)
-        {
-            switch (change.Reason)
-            {
-                case ChangeReason.Add:
-                case ChangeReason.Update:
-                    GetOrCreateCourseCopyTarget(course).AddOrUpdateClass(change.Current);
-                    break;
-                case ChangeReason.Remove:
-                    RemoveClassFromCourseTarget(course, change.Current);
-                    break;
-            }
-        }
-    }
-
-    void RemoveClassFromCourseTarget(DynamicCourse course, DynamicClass cls)
-    {
-        if (!courseCopyTargetsByCourse.TryGetValue(course, out var target))
-        {
-            return;
-        }
-
-        target.RemoveClass(cls);
-
-        if (target.IsEmpty)
-        {
-            RemoveCourseCopyTarget(course);
-        }
-    }
-
     void HandleSelectedCourseChanged(DynamicCourse? course)
     {
         courseAnchors?.Dispose();
@@ -243,13 +191,11 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         UpdateTerms(course);
         EnsureSelectedTermExists();
 
-        SelectedClass = course.Classes.FirstOrDefault();
         course.CriteriaChanges
             .MergeManyChangeSets(c => c.SelfAndDescendants())
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Weight)
             .AutoRefresh(c => c.Id)
-            .AutoRefresh(c => c.ClassId)
             .AutoRefresh(c => c.Term)
             .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
             .Select(_ => Unit.Default)
@@ -306,14 +252,14 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         var previous = SelectedNode?.Criterion;
         criteriaInternal.Clear();
 
-        if (SelectedCourse == null || SelectedClass == null)
+        if (SelectedCourse == null)
         {
             SelectedNode = null;
             return;
         }
 
-        var relevant = SelectedCourse.FilterCriteriaTree(SelectedClass.Id, SelectedTerm)
-            .Select(root => ScopedCriterionNode.Build(root, SelectedClass.Id, SelectedTerm))
+        var relevant = SelectedCourse.FilterCriteriaTree(SelectedTerm)
+            .Select(root => ScopedCriterionNode.Build(root, SelectedTerm))
             .Where(node => node != null)
             .Select(node => node!)
             .ToList();
@@ -334,7 +280,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     async Task DoAddRootCriterion()
     {
-        if (SelectedCourse == null || SelectedClass == null)
+        if (SelectedCourse == null)
         {
             return;
         }
@@ -345,7 +291,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             Id = $"C{idx}",
             Name = $"Criterion {idx}",
             Weight = 1,
-            ClassId = SelectedClass?.Id ?? string.Empty,
+            ClassId = string.Empty,
             Term = SelectedTerm
         };
         var criterion = SelectedCourse.AddCriterion(model);
@@ -356,7 +302,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     async Task DoAddChildCriterion()
     {
-        if (SelectedNode?.Criterion == null || SelectedClass == null)
+        if (SelectedNode?.Criterion == null)
         {
             return;
         }
@@ -368,7 +314,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             Id = $"{parent.Id}.{idx}",
             Name = $"Subcriterion {idx}",
             Weight = 1,
-            ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? SelectedClass?.Id ?? string.Empty : parent.ClassId,
+            ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? string.Empty : parent.ClassId,
             Term = parent.Term ?? SelectedTerm
         };
         var child = parent.AddChild(model);
@@ -415,21 +361,20 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     async Task DoCopyCriteria(CriterionCopyTarget? target)
     {
-        if (target == null || SelectedCourse == null || SelectedClass == null)
+        if (target == null || SelectedCourse == null)
         {
             return;
         }
 
         var destinationCourse = target.Course;
-        var destinationClass = target.Class;
         var destinationTerm = target.Term;
 
         var clones = Criteria
-            .Select(node => CloneCriterion(node, destinationClass, destinationTerm))
+            .Select(node => CloneCriterion(node, destinationTerm))
             .ToList();
 
         var toRemove = destinationCourse.Criteria
-            .Where(rootCriterion => rootCriterion.MatchesTreeScope(destinationClass.Id, destinationTerm))
+            .Where(rootCriterion => rootCriterion.MatchesTreeScope(destinationTerm))
             .ToList();
 
         foreach (var criterion in toRemove)
@@ -445,10 +390,9 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         await ExecuteSave();
     }
 
-    Models.Criterion CloneCriterion(ScopedCriterionNode node, DynamicClass destinationClass, int destinationTerm)
+    Models.Criterion CloneCriterion(ScopedCriterionNode node, int destinationTerm)
     {
         var criterion = node.Criterion;
-        var classId = string.IsNullOrWhiteSpace(criterion.ClassId) ? string.Empty : destinationClass.Id;
         var term = criterion.Term.HasValue ? destinationTerm : criterion.Term;
 
         return new Models.Criterion
@@ -456,10 +400,10 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             Id = Guid.NewGuid().ToString(),
             Name = criterion.Name,
             Weight = criterion.Weight,
-            ClassId = classId,
+            ClassId = string.Empty,
             Term = term,
             Children = node.Children
-                .Select(child => CloneCriterion(child, destinationClass, destinationTerm))
+                .Select(child => CloneCriterion(child, destinationTerm))
                 .ToList()
         };
     }
@@ -489,13 +433,6 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     {
         courseAnchors?.Dispose();
         anchors.Dispose();
-        foreach (var subscription in courseSubscriptions.Values.ToList())
-        {
-            subscription.Dispose();
-        }
-
-        courseSubscriptions.Clear();
-
         foreach (var target in courseCopyTargetsCache.Items.ToList())
         {
             target.Dispose();

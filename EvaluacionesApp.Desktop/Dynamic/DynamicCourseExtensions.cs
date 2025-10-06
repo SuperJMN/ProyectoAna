@@ -18,7 +18,6 @@ public static class DynamicCourseExtensions
         return course.CriteriaChanges
             .MergeManyChangeSets(criterion => criterion.SelfAndDescendants())
             .AutoRefresh(c => c.IsLeaf)
-            .AutoRefresh(c => c.ClassId)
             .AutoRefresh(c => c.Term)
             .Filter(c => c.IsLeaf);
     }
@@ -32,26 +31,26 @@ public static class DynamicCourseExtensions
             .Where(criterion => criterion.IsLeaf);
     }
 
-    public static IEnumerable<DynamicCriterion> EnumerateLeafCriteria(this DynamicCourse course, string? classId, int term)
+    public static IEnumerable<DynamicCriterion> EnumerateLeafCriteria(this DynamicCourse course, int term)
     {
         ArgumentNullException.ThrowIfNull(course);
 
         var result = new List<DynamicCriterion>();
         foreach (var criterion in course.Criteria)
         {
-            CollectLeaves(criterion, classId, term, result);
+            CollectLeaves(criterion, term, result);
         }
 
         return result;
     }
 
-    public static IEnumerable<DynamicCriterion> FilterCriteriaTree(this DynamicCourse course, string? classId, int term)
+    public static IEnumerable<DynamicCriterion> FilterCriteriaTree(this DynamicCourse course, int term)
     {
         ArgumentNullException.ThrowIfNull(course);
 
         foreach (var criterion in course.Criteria)
         {
-            if (criterion.MatchesTreeScope(classId, term))
+            if (criterion.MatchesTreeScope(term))
             {
                 yield return criterion;
             }
@@ -60,18 +59,17 @@ public static class DynamicCourseExtensions
 
     static void CollectLeaves(
         DynamicCriterion node,
-        string? targetClassId,
         int term,
         ICollection<DynamicCriterion> result)
     {
-        if (!node.MatchesTreeScope(targetClassId, term))
+        if (!node.MatchesTreeScope(term))
         {
             return;
         }
 
         if (node.Children.Count == 0)
         {
-            if (node.MatchesScope(targetClassId, term))
+            if (node.MatchesScope(term))
             {
                 result.Add(node);
             }
@@ -80,7 +78,7 @@ public static class DynamicCourseExtensions
 
         foreach (var child in node.Children)
         {
-            CollectLeaves(child, targetClassId, term, result);
+            CollectLeaves(child, term, result);
         }
     }
 }

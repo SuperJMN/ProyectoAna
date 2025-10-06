@@ -173,23 +173,24 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         leafCriteriaInternal.Clear();
         weights = new Dictionary<string, double>();
 
-        var selection = Maybe<DynamicCourse>.From(SelectedCourse)
-            .Bind(course => Maybe<DynamicClass>.From(SelectedClass).Map(cls => (course, cls)));
+        var courseOption = Maybe<DynamicCourse>.From(SelectedCourse);
+        var classOption = Maybe<DynamicClass>.From(SelectedClass);
 
-        if (selection.HasNoValue)
+        if (courseOption.HasNoValue || classOption.HasNoValue)
         {
             SelectedScoreRow = null;
             CriteriaTree = Enumerable.Empty<ScopedCriterionNode>();
             return;
         }
 
-        var (course, cls) = selection.Value;
-        CriteriaTree = course.FilterCriteriaTree(cls.Id, SelectedTerm)
-            .Select(root => ScopedCriterionNode.Build(root, cls.Id, SelectedTerm))
+        var course = courseOption.Value;
+        var cls = classOption.Value;
+        CriteriaTree = course.FilterCriteriaTree(SelectedTerm)
+            .Select(root => ScopedCriterionNode.Build(root, SelectedTerm))
             .Where(node => node != null)
             .Select(node => node!)
             .ToList();
-        var leaves = course.EnumerateLeafCriteria(cls.Id, SelectedTerm).ToList();
+        var leaves = course.EnumerateLeafCriteria(SelectedTerm).ToList();
 
         foreach (var leaf in leaves)
         {

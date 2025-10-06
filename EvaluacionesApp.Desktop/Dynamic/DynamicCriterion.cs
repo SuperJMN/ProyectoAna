@@ -65,28 +65,26 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<DynamicCriterion> Children { get; }
 
-    public string? EffectiveClassId => string.IsNullOrWhiteSpace(ClassId) ? parent?.EffectiveClassId : ClassId;
-
     public int? EffectiveTerm => Term ?? parent?.EffectiveTerm;
 
-    public bool MatchesScope(string? classId, int term)
+    public bool MatchesScope(int term)
     {
-        return MatchesClass(EffectiveClassId, classId) && MatchesTerm(EffectiveTerm, term);
+        return MatchesTerm(EffectiveTerm, term);
     }
 
-    public bool MatchesTreeScope(string? classId, int term)
+    public bool MatchesTreeScope(int term)
     {
-        if (MatchesScope(classId, term))
+        if (MatchesScope(term))
         {
             return true;
         }
 
-        return Children.Any(child => child.MatchesTreeScope(classId, term));
+        return Children.Any(child => child.MatchesTreeScope(term));
     }
 
-    public IEnumerable<DynamicCriterion> FilterChildren(string? classId, int term)
+    public IEnumerable<DynamicCriterion> FilterChildren(int term)
     {
-        return Children.Where(child => child.MatchesTreeScope(classId, term));
+        return Children.Where(child => child.MatchesTreeScope(term));
     }
 
     public IObservable<IChangeSet<DynamicCriterion, string>> ChildrenChanges => childrenCache.Connect();
@@ -125,16 +123,6 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
         }
 
         anchors.Dispose();
-    }
-
-    static bool MatchesClass(string? criterionClassId, string? selectedClassId)
-    {
-        if (string.IsNullOrWhiteSpace(criterionClassId))
-        {
-            return true;
-        }
-
-        return string.Equals(criterionClassId, selectedClassId, StringComparison.Ordinal);
     }
 
     static bool MatchesTerm(int? criterionTerm, int selectedTerm)
