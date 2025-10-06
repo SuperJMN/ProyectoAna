@@ -13,6 +13,7 @@ public partial class CourseVm : ViewModelBase
     public Course Model { get; }
     public ObservableCollection<ClassVm> Classes { get; } = new();
     public ObservableCollection<CriterionVm> Criteria { get; } = new();
+    public ObservableCollection<int> Terms { get; } = new();
 
     [Reactive]
     private string id = string.Empty;
@@ -34,6 +35,22 @@ public partial class CourseVm : ViewModelBase
             Criteria.Add(new CriterionVm(cr));
         }
 
+        var termValues = model.Terms.Count > 0
+            ? model.Terms
+            : DeriveTermsFromCriteria(model.Criteria);
+
+        foreach (var term in termValues.Distinct().OrderBy(x => x))
+        {
+            Terms.Add(term);
+        }
+
+        if (Terms.Count == 0)
+        {
+            Terms.Add(1);
+            Terms.Add(2);
+            Terms.Add(3);
+        }
+
         this.WhenAnyValue(x => x.Name).Subscribe(v => Model.Name = v);
         this.WhenAnyValue(x => x.Id).Subscribe(v => Model.Id = v);
     }
@@ -43,9 +60,35 @@ public partial class CourseVm : ViewModelBase
     {
         Model.Classes = Classes.Select(x => x.ToModel()).ToList();
         Model.Criteria = Criteria.Select(x => x.ToModel()).ToList();
+        Model.Terms = Terms.Distinct().OrderBy(x => x).ToList();
         Model.Name = Name;
         Model.Id = Id;
         return Model;
+    }
+
+    static List<int> DeriveTermsFromCriteria(IEnumerable<Criterion> criteria)
+    {
+        var set = new HashSet<int>();
+
+        void Walk(IEnumerable<Criterion> nodes)
+        {
+            foreach (var node in nodes)
+            {
+                if (node.Term.HasValue)
+                {
+                    set.Add(node.Term.Value);
+                }
+
+                if (node.Children.Count > 0)
+                {
+                    Walk(node.Children);
+                }
+            }
+        }
+
+        Walk(criteria);
+        set.Add(1);
+        return set.Count > 0 ? set.ToList() : new List<int> { 1, 2, 3 };
     }
 }
 

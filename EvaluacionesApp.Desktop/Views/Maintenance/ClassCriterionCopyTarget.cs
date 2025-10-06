@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using DynamicData;
 using EvaluacionesApp.Desktop.Dynamic;
 using ReactiveUI;
 
@@ -19,12 +21,14 @@ public sealed class ClassCriterionCopyTarget : ReactiveObject, IDisposable
         Course = course;
         Class = @class;
 
-        foreach (var term in new[] { 1, 2, 3 })
-        {
-            termsInternal.Add(new TermCriterionCopyTarget(new CriterionCopyTarget(course, @class, term)));
-        }
-
         terms = new ReadOnlyObservableCollection<TermCriterionCopyTarget>(termsInternal);
+
+        UpdateTerms();
+
+        course.TermsChanges
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => UpdateTerms())
+            .DisposeWith(anchors);
 
         UpdateState();
 
@@ -59,5 +63,17 @@ public sealed class ClassCriterionCopyTarget : ReactiveObject, IDisposable
     public void Dispose()
     {
         anchors.Dispose();
+    }
+
+    void UpdateTerms()
+    {
+        termsInternal.Clear();
+
+        IEnumerable<int> termValues = Course.Terms.Count > 0 ? Course.Terms : new[] { 1, 2, 3 };
+
+        foreach (var term in termValues)
+        {
+            termsInternal.Add(new TermCriterionCopyTarget(new CriterionCopyTarget(Course, Class, term)));
+        }
     }
 }

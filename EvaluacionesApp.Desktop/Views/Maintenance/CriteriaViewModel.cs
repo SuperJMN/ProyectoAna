@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -28,6 +29,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     private readonly Dictionary<DynamicCourse, CourseCriterionCopyTarget> courseCopyTargetsByCourse = new();
     private CompositeDisposable? courseAnchors;
     private DynamicRoot? root;
+    private readonly NotifyCollectionChangedEventHandler termCollectionChanged;
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
@@ -45,7 +47,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<CourseCriterionCopyTarget> CourseCopyTargets => courseCopyTargets;
 
-    public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
+    public ObservableCollection<int> Terms { get; } = new();
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
@@ -57,6 +59,11 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     {
         this.store = store;
         Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaInternal);
+        termCollectionChanged = (_, _) =>
+        {
+            UpdateTerms(SelectedCourse);
+            EnsureSelectedTermExists();
+        };
         courseCopyTargetsCache.Connect()
             .OnItemRemoved(DisposeCourseCopyTarget)
             .AutoRefresh(target => target.CourseOrder)
@@ -97,8 +104,9 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             .Subscribe(HandleCoursesChanged)
             .DisposeWith(anchors);
 
-        SelectedTerm = 1;
         SelectedCourse = Courses.FirstOrDefault();
+        UpdateTerms(SelectedCourse);
+        EnsureSelectedTermExists();
     }
 
     void RegisterExistingCourses(DynamicRoot currentRoot)
@@ -220,12 +228,20 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
         if (course == null)
         {
+            Terms.Clear();
             criteriaInternal.Clear();
             SelectedNode = null;
             return;
         }
 
         courseAnchors = new CompositeDisposable();
+
+        var termCollection = (INotifyCollectionChanged)course.Terms;
+        termCollection.CollectionChanged += termCollectionChanged;
+        courseAnchors.Add(Disposable.Create(() => termCollection.CollectionChanged -= termCollectionChanged));
+
+        UpdateTerms(course);
+        EnsureSelectedTermExists();
 
         SelectedClass = course.Classes.FirstOrDefault();
         course.CriteriaChanges
@@ -248,6 +264,41 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
         RefreshCriteria();
         SelectedNode = Criteria.FirstOrDefault();
+    }
+
+    void UpdateTerms(DynamicCourse? course)
+    {
+        Terms.Clear();
+        if (course == null)
+        {
+            return;
+        }
+
+        foreach (var term in course.Terms.Distinct().OrderBy(x => x))
+        {
+            Terms.Add(term);
+        }
+
+        if (Terms.Count == 0)
+        {
+            Terms.Add(1);
+            Terms.Add(2);
+            Terms.Add(3);
+        }
+    }
+
+    void EnsureSelectedTermExists()
+    {
+        if (Terms.Count == 0)
+        {
+            SelectedTerm = 1;
+            return;
+        }
+
+        if (!Terms.Contains(SelectedTerm))
+        {
+            SelectedTerm = Terms.First();
+        }
     }
 
     void RefreshCriteria()

@@ -97,6 +97,17 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .InvokeCommand(RebuildRows)
             .DisposeWith(anchors);
 
+        selectedCourseChanges
+            .Select(course => course != null
+                ? course.TermsChanges
+                    .Select(_ => Unit.Default)
+                    .StartWith(Unit.Default)
+                : Observable.Return(Unit.Default))
+            .Switch()
+            .ObserveOn(this.scheduler)
+            .Subscribe(_ => UpdateTerms(SelectedCourse))
+            .DisposeWith(anchors);
+
         var studentChanges = this.WhenAnyValue(x => x.SelectedClass)
             .Select(cls => cls != null
                 ? cls.StudentsChanges.Throttle(TimeSpan.FromMilliseconds(200), this.scheduler).Select(_ => Unit.Default)
@@ -138,7 +149,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
     [Reactive] private ScoreRow? selectedScoreRow;
 
-    public ObservableCollection<int> Terms { get; } = new(new[] { 1, 2, 3 });
+    public ObservableCollection<int> Terms { get; } = new();
     [Reactive] private int selectedTerm = 1;
 
 
@@ -151,6 +162,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         root = await store.GetRoot();
         Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
+        UpdateTerms(SelectedCourse);
     }
 
     void RebuildScoreRows()
@@ -240,6 +252,32 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Match(value => value, () => SelectedCourse?.Classes.FirstOrDefault());
 
         RebuildScoreRows();
+    }
+
+    void UpdateTerms(DynamicCourse? course)
+    {
+        Terms.Clear();
+
+        IEnumerable<int> source = course != null && course.Terms.Count > 0
+            ? course.Terms
+            : new[] { 1, 2, 3 };
+
+        foreach (var term in source.Distinct().OrderBy(x => x))
+        {
+            Terms.Add(term);
+        }
+
+        if (Terms.Count == 0)
+        {
+            Terms.Add(1);
+            Terms.Add(2);
+            Terms.Add(3);
+        }
+
+        if (!Terms.Contains(SelectedTerm))
+        {
+            SelectedTerm = Terms.First();
+        }
     }
 
     public void Dispose()
