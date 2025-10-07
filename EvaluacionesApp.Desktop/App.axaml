@@ -5,16 +5,26 @@
              xmlns:local="using:EvaluacionesApp.Desktop"
              xmlns:zmisc="clr-namespace:Zafiro.Avalonia.Misc;assembly=Zafiro.Avalonia"
              xmlns:z="clr-namespace:Zafiro.Avalonia;assembly=Zafiro.Avalonia"
+             xmlns:common="clr-namespace:EvaluacionesApp.Desktop.ViewModels"
              x:Class="EvaluacionesApp.Desktop.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <StyleInclude Source="avares://Zafiro.Avalonia/Styles.axaml" />
         <StyleInclude Source="avares://Zafiro.Avalonia.Dialogs/Styles.axaml" />
     </Application.Styles>
+
+    <Application.Resources>
+        <ControlTheme x:Key="MenuViewMenuItem" x:DataType="common:MenuViewModel" BasedOn="{StaticResource {x:Type MenuItem}}" TargetType="MenuItem">
+            <Setter Property="Header" Value="{Binding Header}" />
+            <Setter Property="Command" Value="{Binding Command}" />
+            <Setter Property="CommandParameter" Value="{Binding CommandParameter}" />
+            <Setter Property="ItemsSource" Value="{Binding Children}" />
+        </ControlTheme>
+    </Application.Resources>
 
     <Application.DataTemplates>
         <misc:DataTemplateInclude Source="avares://Zafiro.Avalonia/DataTemplates.axaml" />
