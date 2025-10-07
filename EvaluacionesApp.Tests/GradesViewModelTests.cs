@@ -199,7 +199,95 @@ public class GradesViewModelTests
 
         Pump(scheduler);
 
-        Assert.Equal(7.5m, row.Total);
+        Assert.Equal(7m, row.Total, 6);
+    }
+
+    [Fact]
+    public async Task Total_respects_parent_weights_when_children_have_scores()
+    {
+        var scheduler = new TestScheduler();
+        var root = new Root
+        {
+            Courses =
+            [
+                new Course
+                {
+                    Id = "course-weighted",
+                    Name = "Weighted Course",
+                    Classes =
+                    [
+                        new Class
+                        {
+                            Id = "class-weighted",
+                            Name = "A",
+                            Students =
+                            [
+                                new Student { Id = "student-weighted", FirstName = "Jaime" }
+                            ],
+                            Assessments = new List<Assessment>()
+                        }
+                    ],
+                    Criteria =
+                    [
+                        new Criterion
+                        {
+                            Id = "c1",
+                            Name = "C1",
+                            Weight = 0.25m,
+                            ClassId = string.Empty,
+                            Term = 1,
+                            Children =
+                            [
+                                new Criterion
+                                {
+                                    Id = "c1-1",
+                                    Name = "C1.1",
+                                    Weight = 0.5m,
+                                    ClassId = string.Empty,
+                                    Term = 1,
+                                    Children =
+                                    [
+                                        new Criterion { Id = "c1-1-1", Name = "C1.1.1", Weight = 0.5m, ClassId = string.Empty, Term = 1 },
+                                        new Criterion { Id = "c1-1-2", Name = "C1.1.2", Weight = 0.5m, ClassId = string.Empty, Term = 1 }
+                                    ]
+                                },
+                                new Criterion
+                                {
+                                    Id = "c1-2",
+                                    Name = "C1.2",
+                                    Weight = 0.5m,
+                                    ClassId = string.Empty,
+                                    Term = 1,
+                                    Children =
+                                    [
+                                        new Criterion { Id = "c1-2-1", Name = "C1.2.1", Weight = 0.5m, ClassId = string.Empty, Term = 1 },
+                                        new Criterion { Id = "c1-2-2", Name = "C1.2.2", Weight = 0.5m, ClassId = string.Empty, Term = 1 }
+                                    ]
+                                }
+                            ]
+                        },
+                        new Criterion { Id = "c2", Name = "C2", Weight = 0.75m, ClassId = string.Empty, Term = 1 }
+                    ]
+                }
+            ]
+        };
+
+        using var store = RecordingSchoolStore.FromDomain(root);
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.First();
+
+        row["c1-1-1"].Value = 10m;
+        row["c1-1-2"].Value = 10m;
+        row["c1-2-1"].Value = 10m;
+        row["c1-2-2"].Value = 10m;
+
+        Pump(scheduler);
+
+        Assert.Equal(2.5m, row.Total, 4);
     }
 
     [Fact]

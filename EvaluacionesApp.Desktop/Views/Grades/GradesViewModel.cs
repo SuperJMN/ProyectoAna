@@ -185,11 +185,12 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
         var course = courseOption.Value;
         var cls = classOption.Value;
-        CriteriaTree = course.FilterCriteriaTree(SelectedTerm)
+        var tree = course.FilterCriteriaTree(SelectedTerm)
             .Select(root => ScopedCriterionNode.Build(root, SelectedTerm))
             .Where(node => node != null)
             .Select(node => node!)
             .ToList();
+        CriteriaTree = tree;
         var leaves = course.EnumerateLeafCriteria(SelectedTerm).ToList();
 
         foreach (var leaf in leaves)
@@ -197,7 +198,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             leafCriteriaInternal.Add(leaf);
         }
 
-        weights = ComputeWeights(leaves);
+        weights = ComputeWeights(tree);
 
         scoreRowsCache.Edit(cache =>
         {
@@ -214,20 +215,80 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Match(value => value, () => ScoreRows.FirstOrDefault());
     }
 
-    static Dictionary<string, decimal> ComputeWeights(IReadOnlyCollection<DynamicCriterion> leaves)
+    static Dictionary<string, decimal> ComputeWeights(IReadOnlyCollection<ScopedCriterionNode> roots)
     {
-        if (leaves.Count == 0)
+        if (roots.Count == 0)
         {
             return new Dictionary<string, decimal>();
         }
 
-        var total = leaves.Sum(l => l.Weight);
-        if (total <= 0)
+        var contributions = new Dictionary<string, decimal>();
+        var rootEntries = roots
+            .Select(node => (Node: node, Weight: Math.Max(node.Criterion.Weight, 0m)))
+            .ToList();
+
+        if (rootEntries.Count == 0)
         {
-            total = 1m;
+            return contributions;
         }
 
-        return leaves.ToDictionary(leaf => leaf.Id, leaf => leaf.Weight / total);
+        var rootWeightSum = rootEntries.Sum(entry => entry.Weight);
+        if (rootWeightSum <= 0m)
+        {
+            var equalShare = 1m / rootEntries.Count;
+            foreach (var entry in rootEntries)
+            {
+                DistributeWeight(entry.Node, equalShare, contributions);
+            }
+            return contributions;
+        }
+
+        foreach (var entry in rootEntries)
+        {
+            var share = entry.Weight / rootWeightSum;
+            DistributeWeight(entry.Node, share, contributions);
+        }
+
+        return contributions;
+    }
+
+    static void DistributeWeight(
+        ScopedCriterionNode node,
+        decimal allocatedWeight,
+        IDictionary<string, decimal> contributions)
+    {
+        if (node.Children.Count == 0)
+        {
+            contributions[node.Id] = allocatedWeight;
+            return;
+        }
+
+        var childEntries = node.Children
+            .Select(child => (Node: child, Weight: Math.Max(child.Criterion.Weight, 0m)))
+            .ToList();
+
+        if (childEntries.Count == 0)
+        {
+            contributions[node.Id] = allocatedWeight;
+            return;
+        }
+
+        var weightSum = childEntries.Sum(entry => entry.Weight);
+        if (weightSum <= 0m)
+        {
+            var equalShare = allocatedWeight / childEntries.Count;
+            foreach (var entry in childEntries)
+            {
+                DistributeWeight(entry.Node, equalShare, contributions);
+            }
+            return;
+        }
+
+        foreach (var entry in childEntries)
+        {
+            var share = allocatedWeight * (entry.Weight / weightSum);
+            DistributeWeight(entry.Node, share, contributions);
+        }
     }
 
     async Task ExecuteSave()
