@@ -8,6 +8,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
+using DynamicData.Kernel;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using System.Threading.Tasks;
@@ -20,12 +21,14 @@ namespace EvaluacionesApp.Desktop.Views.Maintenance;
 public partial class CriteriaViewModel : ReactiveObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
-    private static readonly ReadOnlyObservableCollection<CourseCriterionCopyTarget> EmptyCourseCopyTargets = new(new ObservableCollection<CourseCriterionCopyTarget>());
+    private static readonly ReadOnlyObservableCollection<MenuViewModel> EmptyCopyMenuItems = new(new ObservableCollection<MenuViewModel>());
 
     private readonly DynamicSchoolStore store;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<CourseCriterionCopyTarget, string> courseCopyTargetsCache = new(target => target.CourseId);
+    private readonly SourceCache<MenuViewModel, string> copyMenuCache = new(menu => menu.Key);
     private readonly Dictionary<DynamicCourse, CourseCriterionCopyTarget> courseCopyTargetsByCourse = new();
+    private readonly Dictionary<CourseCriterionCopyTarget, CourseCopyMenuViewModel> copyMenusByTarget = new();
     private CompositeDisposable? courseAnchors;
     private DynamicRoot? root;
     private readonly NotifyCollectionChangedEventHandler termCollectionChanged;
@@ -33,7 +36,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
 
-    private ReadOnlyObservableCollection<CourseCriterionCopyTarget> courseCopyTargets = EmptyCourseCopyTargets;
+    private ReadOnlyObservableCollection<MenuViewModel> copyCriteriaMenu = EmptyCopyMenuItems;
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
@@ -43,7 +46,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<ScopedCriterionNode> Criteria { get; }
 
-    public ReadOnlyObservableCollection<CourseCriterionCopyTarget> CourseCopyTargets => courseCopyTargets;
+    public ReadOnlyObservableCollection<MenuViewModel> CopyCriteriaMenu => copyCriteriaMenu;
 
     public ObservableCollection<int> Terms { get; } = new();
 
@@ -62,16 +65,6 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             UpdateTerms(SelectedCourse);
             EnsureSelectedTermExists();
         };
-        courseCopyTargetsCache.Connect()
-            .OnItemRemoved(DisposeCourseCopyTarget)
-            .AutoRefresh(target => target.CourseOrder)
-            .AutoRefresh(target => target.CourseName)
-            .Sort(SortExpressionComparer<CourseCriterionCopyTarget>
-                .Ascending(target => target.CourseOrder)
-                .ThenByAscending(target => target.CourseName))
-            .Bind(out courseCopyTargets)
-            .Subscribe()
-            .DisposeWith(anchors);
         var hasCourse = this.WhenAnyValue(x => x.SelectedCourse)
             .Select(course => course != null);
         var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
@@ -81,6 +74,16 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, hasCriterion);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
         CopyCriteria = ReactiveCommand.CreateFromTask<CriterionCopyTarget?>(DoCopyCriteria, hasCourse);
+        copyMenuCache.Connect()
+            .DisposeMany()
+            .AutoRefresh(menu => ((CourseCopyMenuViewModel)menu).CourseOrder)
+            .AutoRefresh(menu => menu.Header)
+            .Sort(SortExpressionComparer<MenuViewModel>
+                .Ascending(menu => ((CourseCopyMenuViewModel)menu).CourseOrder)
+                .ThenByAscending(menu => menu.Header))
+            .Bind(out copyCriteriaMenu)
+            .Subscribe()
+            .DisposeWith(anchors);
         _ = Load();
     }
 
@@ -151,22 +154,32 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         var target = new CourseCriterionCopyTarget(course);
         courseCopyTargetsByCourse[course] = target;
         courseCopyTargetsCache.AddOrUpdate(target);
+        var menu = new CourseCopyMenuViewModel(target, CopyCriteria);
+        copyMenusByTarget[target] = menu;
+        copyMenuCache.AddOrUpdate(menu);
         return target;
     }
 
     void RemoveCourseCopyTarget(DynamicCourse course)
     {
-        if (!courseCopyTargetsByCourse.Remove(course, out _))
+        if (!courseCopyTargetsByCourse.Remove(course, out var target))
         {
             return;
         }
 
+        RemoveCourseCopyMenu(target);
         courseCopyTargetsCache.RemoveKey(course.Id);
+        target.Dispose();
     }
 
-    void DisposeCourseCopyTarget(CourseCriterionCopyTarget target)
+    void RemoveCourseCopyMenu(CourseCriterionCopyTarget target)
     {
-        target.Dispose();
+        if (!copyMenusByTarget.Remove(target, out var menu))
+        {
+            return;
+        }
+
+        copyMenuCache.RemoveKey(menu.Key);
     }
 
     void HandleSelectedCourseChanged(DynamicCourse? course)
@@ -429,6 +442,65 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         return null;
     }
 
+    private sealed class CourseCopyMenuViewModel : MenuViewModel, IDisposable
+    {
+        private readonly CompositeDisposable anchors = new();
+        private int courseOrder;
+
+        public CourseCopyMenuViewModel(CourseCriterionCopyTarget target, ReactiveCommand<CriterionCopyTarget?, Unit> command)
+        {
+            Key = target.CourseId;
+            Header = target.CourseName;
+            CourseOrder = target.CourseOrder;
+
+            target.WhenAnyValue(x => x.CourseName)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(value => Header = value)
+                .DisposeWith(anchors);
+
+            target.WhenAnyValue(x => x.CourseOrder)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(value => CourseOrder = value)
+                .DisposeWith(anchors);
+
+            target.Terms
+                .ToObservableChangeSet()
+                .Select(changes => changes.Transform(term => (MenuItemViewModel)new TermCopyMenuItemViewModel(term, command)))
+                .DisposeMany()
+                .Bind(out var termItems)
+                .Subscribe()
+                .DisposeWith(anchors);
+
+            SetChildren(termItems);
+        }
+
+        public int CourseOrder
+        {
+            get => courseOrder;
+            private set => this.RaiseAndSetIfChanged(ref courseOrder, value);
+        }
+
+        public void Dispose()
+        {
+            anchors.Dispose();
+        }
+    }
+
+    private sealed class TermCopyMenuItemViewModel : MenuItemViewModel, IDisposable
+    {
+        public TermCopyMenuItemViewModel(TermCriterionCopyTarget term, ReactiveCommand<CriterionCopyTarget?, Unit> command)
+        {
+            Key = $"{term.Target.Course.Id}:{term.Target.Term}";
+            Header = term.TermName;
+            Command = command;
+            CommandParameter = term.Target;
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
     public void Dispose()
     {
         courseAnchors?.Dispose();
@@ -440,5 +512,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
         courseCopyTargetsCache.Dispose();
         courseCopyTargetsByCourse.Clear();
+        copyMenuCache.Dispose();
+        copyMenusByTarget.Clear();
     }
 }

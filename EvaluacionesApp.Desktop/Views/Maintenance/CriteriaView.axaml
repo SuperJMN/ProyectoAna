@@ -8,6 +8,7 @@
              x:Class="EvaluacionesApp.Desktop.Views.Maintenance.CriteriaView"
              x:Name="CriteriaViewRoot"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Views.Maintenance"
+             xmlns:common="clr-namespace:EvaluacionesApp.Desktop.ViewModels"
              x:DataType="vm:CriteriaViewModel">
   <UserControl.Resources>
   </UserControl.Resources>
@@ -28,15 +29,21 @@
       <Button Content="Delete" Command="{Binding DeleteCriterion}"/>
       <Button Content="Copiar criterios" Margin="12,0,0,0">
         <Button.Flyout>
-          <controls:MenuFlyout ItemsSource="{Binding CourseCopyTargets}">
+          <controls:MenuFlyout ItemsSource="{Binding CopyCriteriaMenu}">
             <controls:MenuFlyout.ItemTemplate>
-              <DataTemplate x:DataType="vm:CourseCriterionCopyTarget">
-                <controls:MenuItem Header="{Binding CourseName}" ItemsSource="{Binding Terms}">
+              <DataTemplate x:DataType="common:MenuViewModel">
+                <controls:MenuItem Header="{Binding Header}"
+                                   Icon="{Binding Icon}"
+                                   Command="{Binding Command}"
+                                   CommandParameter="{Binding CommandParameter}"
+                                   ItemsSource="{Binding Children}">
                   <controls:MenuItem.ItemTemplate>
-                    <DataTemplate x:DataType="vm:TermCriterionCopyTarget">
-                      <controls:MenuItem Header="{Binding TermName}"
-                                         Command="{Binding #CriteriaViewRoot.DataContext.CopyCriteria}"
-                                         CommandParameter="{Binding Target}"/>
+                    <DataTemplate x:DataType="common:MenuItemViewModel">
+                      <controls:MenuItem Header="{Binding Header}"
+                                         Icon="{Binding Icon}"
+                                         Command="{Binding Command}"
+                                         CommandParameter="{Binding CommandParameter}"
+                                         ItemsSource="{Binding Children}"/>
                     </DataTemplate>
                   </controls:MenuItem.ItemTemplate>
                 </controls:MenuItem>
