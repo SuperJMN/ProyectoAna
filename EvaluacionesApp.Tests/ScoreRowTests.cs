@@ -50,24 +50,24 @@ public class ScoreRowTests
         var leaves = new List<DynamicCriterion>(course.Criteria);
 
         var row = new ScoreRow(cls, student, leaves, 1, scheduler);
-        row.SetWeights(new Dictionary<string, double>
+        row.SetWeights(new Dictionary<string, decimal>
         {
-            ["crit-1"] = 0.5,
-            ["crit-2"] = 0.5
+            ["crit-1"] = 0.5m,
+            ["crit-2"] = 0.5m
         });
 
-        Assert.Equal(0, row.Total);
-        row["crit-1"].Value = 8;
-        row["crit-2"].Value = 4;
-        Assert.Equal(6, row.Total);
+        Assert.Equal(0m, row.Total);
+        row["crit-1"].Value = 8m;
+        row["crit-2"].Value = 4m;
+        Assert.Equal(6m, row.Total);
 
-        row.SetWeights(new Dictionary<string, double>
+        row.SetWeights(new Dictionary<string, decimal>
         {
-            ["crit-1"] = 0.8,
-            ["crit-2"] = 0.2
+            ["crit-1"] = 0.8m,
+            ["crit-2"] = 0.2m
         });
 
-        Assert.Equal(7.2, row.Total, 2);
+        Assert.Equal(7.2m, row.Total);
     }
 
     [Fact]

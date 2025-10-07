@@ -14,9 +14,9 @@ public partial class DynamicAssessment : ReactiveObject
     private string criterionId;
 
     [Reactive]
-    private double? score;
+    private decimal? score;
 
-    public DynamicAssessment(string studentId, string criterionId, double? score)
+    public DynamicAssessment(string studentId, string criterionId, decimal? score)
     {
         this.studentId = studentId;
         this.criterionId = criterionId;

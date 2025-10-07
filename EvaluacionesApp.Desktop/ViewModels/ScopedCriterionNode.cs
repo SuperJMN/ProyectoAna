@@ -18,7 +18,7 @@ public class ScopedCriterionNode
 
     public string Name => Criterion.Name;
 
-    public double Weight => Criterion.Weight;
+    public decimal Weight => Criterion.Weight;
 
     public IReadOnlyList<ScopedCriterionNode> Children { get; }
 
