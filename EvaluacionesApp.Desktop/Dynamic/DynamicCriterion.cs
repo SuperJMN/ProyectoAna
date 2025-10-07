@@ -22,7 +22,7 @@ public partial class DynamicCriterion : ReactiveObject, IDisposable
     private string name;
 
     [Reactive]
-    private double weight;
+    private decimal weight;
 
     [Reactive]
     private string? classId = string.Empty;

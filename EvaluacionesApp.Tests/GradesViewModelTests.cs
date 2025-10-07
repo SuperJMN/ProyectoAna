@@ -127,7 +127,7 @@ public class GradesViewModelTests
 
         var initialSaveCount = store.SaveCount;
 
-        row[criterion.Id].Value = 7;
+        row[criterion.Id].Value = 7m;
 
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(100).Ticks);
         Pump(scheduler);
@@ -149,7 +149,7 @@ public class GradesViewModelTests
         var criterion = viewModel.LeafCriteria.First();
         var row = viewModel.ScoreRows.First();
 
-        row[criterion.Id].Value = 8;
+        row[criterion.Id].Value = 8m;
 
         scheduler.AdvanceBy(TimeSpan.FromMilliseconds(200).Ticks);
         Pump(scheduler);
@@ -193,13 +193,13 @@ public class GradesViewModelTests
 
         var row = viewModel.ScoreRows.First();
 
-        row["criterion-1a"].Value = 10;
-        row["criterion-1b"].Value = 4;
-        row["criterion-2"].Value = 6;
+        row["criterion-1a"].Value = 10m;
+        row["criterion-1b"].Value = 4m;
+        row["criterion-2"].Value = 6m;
 
         Pump(scheduler);
 
-        Assert.Equal(7.5, row.Total, 5);
+        Assert.Equal(7.5m, row.Total);
     }
 
     [Fact]
@@ -217,15 +217,15 @@ public class GradesViewModelTests
         var node = ScopedCriterionNode.Build(parent, viewModel.SelectedTerm)!;
         var converter = new CriterionAggregateConverter();
 
-        row["criterion-1a"].Value = 8;
-        row["criterion-1b"].Value = 4;
+        row["criterion-1a"].Value = 8m;
+        row["criterion-1b"].Value = 4m;
 
         Pump(scheduler);
 
         var initial = converter.Convert(new object?[] { node, row }, typeof(string), null, CultureInfo.InvariantCulture) as string;
         Assert.Equal("6.67", initial);
 
-        row["criterion-1a"].Value = 10;
+        row["criterion-1a"].Value = 10m;
 
         Pump(scheduler);
 

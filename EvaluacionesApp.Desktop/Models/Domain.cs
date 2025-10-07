@@ -82,7 +82,7 @@ public class Criterion
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public double Weight { get; set; } = 0;
+    public decimal Weight { get; set; } = 0;
     public string? ClassId { get; set; } = string.Empty;
     public int? Term { get; set; }
     public List<Criterion> Children { get; set; } = new();
@@ -92,5 +92,5 @@ public class Assessment
 {
     public string StudentId { get; set; } = string.Empty;
     public string CriterionId { get; set; } = string.Empty;
-    public double? Score { get; set; }
+    public decimal? Score { get; set; }
 }

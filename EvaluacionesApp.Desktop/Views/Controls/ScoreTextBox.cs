@@ -68,7 +68,7 @@ public class ScoreTextBox : TextBox
             return;
         }
 
-        if (double.TryParse(text, out var newValue))
+        if (decimal.TryParse(text, out var newValue))
         {
             Row.SetScore(CriterionId!, newValue);
         }

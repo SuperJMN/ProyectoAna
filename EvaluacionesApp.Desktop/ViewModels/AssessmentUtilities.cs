@@ -7,7 +7,7 @@ namespace EvaluacionesApp.Desktop.ViewModels;
 
 internal static class AssessmentUtilities
 {
-    public static Dictionary<(string studentId, string criterionId), double?> BuildScoreLookup(
+    public static Dictionary<(string studentId, string criterionId), decimal?> BuildScoreLookup(
         IEnumerable<Assessment> assessments,
         IReadOnlyDictionary<string, int?> criterionTerms,
         int selectedTerm)
@@ -15,7 +15,7 @@ internal static class AssessmentUtilities
         ArgumentNullException.ThrowIfNull(assessments);
         ArgumentNullException.ThrowIfNull(criterionTerms);
 
-        var map = new Dictionary<(string studentId, string criterionId), double?>();
+        var map = new Dictionary<(string studentId, string criterionId), decimal?>();
 
         foreach (var assessment in assessments)
         {

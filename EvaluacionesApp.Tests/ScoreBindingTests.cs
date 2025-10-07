@@ -15,10 +15,10 @@ public class ScoreBindingTests
 
         Assert.Null(binding.Value);
 
-        binding.Value = 8;
-        Assert.Equal(8, assessment.Score);
+        binding.Value = 8m;
+        Assert.Equal(8m, assessment.Score);
 
-        assessment.Score = 5;
-        Assert.Equal(5, binding.Value);
+        assessment.Score = 5m;
+        Assert.Equal(5m, binding.Value);
     }
 }

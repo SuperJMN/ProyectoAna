@@ -30,7 +30,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<ScoreRow> scoreRows = new(new ObservableCollection<ScoreRow>());
-    private Dictionary<string, double> weights = new();
+    private Dictionary<string, decimal> weights = new();
     private DynamicRoot? root;
 
     [Reactive]
@@ -171,7 +171,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
         scoreRowsCache.Edit(cache => cache.Clear());
         leafCriteriaInternal.Clear();
-        weights = new Dictionary<string, double>();
+        weights = new Dictionary<string, decimal>();
 
         var courseOption = Maybe<DynamicCourse>.From(SelectedCourse);
         var classOption = Maybe<DynamicClass>.From(SelectedClass);
@@ -214,17 +214,17 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Match(value => value, () => ScoreRows.FirstOrDefault());
     }
 
-    static Dictionary<string, double> ComputeWeights(IReadOnlyCollection<DynamicCriterion> leaves)
+    static Dictionary<string, decimal> ComputeWeights(IReadOnlyCollection<DynamicCriterion> leaves)
     {
         if (leaves.Count == 0)
         {
-            return new Dictionary<string, double>();
+            return new Dictionary<string, decimal>();
         }
 
         var total = leaves.Sum(l => l.Weight);
         if (total <= 0)
         {
-            total = 1;
+            total = 1m;
         }
 
         return leaves.ToDictionary(leaf => leaf.Id, leaf => leaf.Weight / total);
@@ -300,7 +300,7 @@ public partial class ScoreRow : ReactiveObject, IDisposable
     private readonly Subject<Unit> weightChanges = new();
     private readonly IScheduler scheduler;
     private readonly DynamicClass @class;
-    private Dictionary<string, double> weights = new();
+    private Dictionary<string, decimal> weights = new();
 
     public ScoreRow(DynamicClass cls, DynamicStudent student, IEnumerable<DynamicCriterion> criteria, int term, IScheduler scheduler)
     {
@@ -338,25 +338,25 @@ public partial class ScoreRow : ReactiveObject, IDisposable
         }
     }
 
-    internal double? GetScore(string criterionId)
+    internal decimal? GetScore(string criterionId)
     {
         var optional = assessments.Lookup(criterionId);
         return optional.HasValue ? optional.Value.Score : null;
     }
 
-    internal void SetScore(string criterionId, double? value)
+    internal void SetScore(string criterionId, decimal? value)
     {
         var assessment = EnsureAssessment(criterionId);
         assessment.Score = value;
     }
 
-    double CalculateTotal()
+    decimal CalculateTotal()
     {
-        return assessments.Items.Sum(assessment => (assessment.Score ?? 0) * weights.GetValueOrDefault(assessment.CriterionId));
+        return assessments.Items.Sum(assessment => (assessment.Score ?? 0m) * weights.GetValueOrDefault(assessment.CriterionId, 0m));
     }
 
     [ObservableAsProperty(PropertyName = nameof(Total))]
-    private IObservable<double> TotalObservable()
+    private IObservable<decimal> TotalObservable()
     {
         return Observable.Merge(
                 assessments.Connect()
@@ -368,7 +368,7 @@ public partial class ScoreRow : ReactiveObject, IDisposable
             .ObserveOn(scheduler);
     }
 
-    public void SetWeights(Dictionary<string, double> map)
+    public void SetWeights(Dictionary<string, decimal> map)
     {
         weights = map;
         weightChanges.OnNext(Unit.Default);
@@ -398,7 +398,7 @@ public partial class ScoreRow : ReactiveObject, IDisposable
 public class ScoreBinding : ReactiveObject
 {
     private readonly DynamicAssessment assessment;
-    private readonly ObservableAsPropertyHelper<double?> value;
+    private readonly ObservableAsPropertyHelper<decimal?> value;
 
     public ScoreBinding(DynamicAssessment assessment, IScheduler scheduler)
     {
@@ -410,7 +410,7 @@ public class ScoreBinding : ReactiveObject
             .ToProperty(this, binding => binding.Value);
     }
 
-    public double? Value
+    public decimal? Value
     {
         get => value.Value;
         set => assessment.Score = value;

@@ -141,7 +141,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 foreach (var kv in row.Scores)
                 {
                     if (!leafCriteria.Contains(kv.Key)) continue;
-                    if (kv.Value is double v)
+                    if (kv.Value is decimal v)
                     {
                         updates.Add(new Assessment
                         {

@@ -214,7 +214,7 @@ public partial class CriterionVm : ViewModelBase
     private string name = string.Empty;
 
     [Reactive]
-    private double weight;
+    private decimal weight;
 
     [Reactive]
     private string classId = string.Empty;
@@ -260,7 +260,7 @@ public partial class CriterionVm : ViewModelBase
 public class ScoreRowVm : ViewModelBase
 {
     public StudentVm Student { get; }
-    public Dictionary<string, double?> Scores { get; } = new();
+    public Dictionary<string, decimal?> Scores { get; } = new();
 
     public ScoreRowVm(StudentVm student)
     {

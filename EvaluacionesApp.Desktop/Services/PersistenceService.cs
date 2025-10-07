@@ -409,7 +409,7 @@ public class PersistenceService
             Id = criterion.Id,
             Name = criterion.Name,
             Term = criterion.Term,
-            Weight = Math.Clamp(criterion.Weight, 0, 1),
+            Weight = decimal.Clamp(criterion.Weight, 0m, 1m),
             ParentId = entry.ParentId
         };
     }
@@ -507,7 +507,7 @@ public class PersistenceService
         public string? Id { get; set; }
         public string? Name { get; set; }
         public int? Term { get; set; }
-        public double Weight { get; set; }
+        public decimal Weight { get; set; }
         public string? ParentId { get; set; }
     }
 
@@ -515,7 +515,7 @@ public class PersistenceService
     {
         public string? StudentId { get; set; }
         public string? AssessmentId { get; set; }
-        public double? Value { get; set; }
+        public decimal? Value { get; set; }
     }
 
     static void EnsureCourseTerms(Root root)
