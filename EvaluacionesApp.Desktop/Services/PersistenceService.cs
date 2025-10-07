@@ -19,8 +19,10 @@ public class PersistenceService
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
-    
+
     private readonly SemaphoreSlim _fileLock = new(1, 1);
+
+    public SanityReport LastSanityReport { get; private set; } = SanityReport.Empty;
 
     public PersistenceService(string? dataPath = null)
     {
@@ -81,6 +83,8 @@ public class PersistenceService
             await using var s = File.OpenRead(DataPath);
             var persisted = await JsonSerializer.DeserializeAsync<PersistedRoot>(s, options);
             var result = ConvertToDomain(persisted);
+            LastSanityReport = SanityChecker.Analyze(result);
+            SanityChecker.LogReport(LastSanityReport);
             EnsureCourseTerms(result);
             return result;
         }

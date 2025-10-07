@@ -24,49 +24,8 @@ public class CriterionAggregateConverter : IMultiValueConverter
             return string.Empty;
         }
 
-        var result = Compute(node, row);
+        var result = CriterionScoreAggregator.Compute(node, row);
         return result.HasValue ? result.Value.ToString("F2", culture) : string.Empty;
-    }
-
-    static decimal? Compute(ScopedCriterionNode node, ScoreRow row)
-    {
-        if (node.Children.Count == 0)
-        {
-            return row.GetScore(node.Criterion.Id);
-        }
-
-        // Weighted sum of children using normalized weights.
-        // Ignore children without value and renormalize to the sum of present weights.
-        var present = new List<(decimal value, decimal weight)>();
-        foreach (var child in node.Children)
-        {
-            var val = Compute(child, row);
-            if (val.HasValue)
-            {
-                var w = child.Criterion.Weight;
-                if (w < 0m) w = 0m; // no pesos negativos
-                present.Add((val.Value, w));
-            }
-        }
-
-        if (present.Count == 0)
-        {
-            return null;
-        }
-
-        var weightSum = present.Sum(t => t.weight);
-        if (weightSum <= 0m)
-        {
-            // Reparto uniforme si todos los pesos son 0
-            return present.Average(t => t.value);
-        }
-
-        decimal weighted = 0m;
-        foreach (var (value, weight) in present)
-        {
-            weighted += value * (weight / weightSum);
-        }
-        return weighted;
     }
 }
 

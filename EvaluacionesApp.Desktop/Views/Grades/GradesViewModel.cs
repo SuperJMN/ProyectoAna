@@ -341,7 +341,22 @@ public partial class ScoreRow : ReactiveObject, IDisposable
     internal decimal? GetScore(string criterionId)
     {
         var optional = assessments.Lookup(criterionId);
-        return optional.HasValue ? optional.Value.Score : null;
+        if (optional.HasValue)
+        {
+            return optional.Value.Score;
+        }
+
+        var existing = @class.Assessments.FirstOrDefault(assessment =>
+            string.Equals(assessment.StudentId, Student.Id, StringComparison.Ordinal) &&
+            string.Equals(assessment.CriterionId, criterionId, StringComparison.Ordinal));
+
+        if (existing != null)
+        {
+            assessments.AddOrUpdate(existing);
+            return existing.Score;
+        }
+
+        return null;
     }
 
     internal void SetScore(string criterionId, decimal? value)
