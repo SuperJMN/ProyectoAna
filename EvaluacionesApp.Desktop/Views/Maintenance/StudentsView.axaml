@@ -7,6 +7,7 @@
              x:Class="EvaluacionesApp.Desktop.Views.Maintenance.StudentsView"
              x:Name="StudentsViewRoot"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Views.Maintenance"
+             xmlns:common="clr-namespace:EvaluacionesApp.Desktop.ViewModels"
              x:DataType="vm:StudentsViewModel">
   <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
     <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
@@ -32,16 +33,21 @@
               Margin="12,0,0,0"
               IsEnabled="{Binding HasSelectedStudents}">
         <Button.Flyout>
-          <controls:MenuFlyout ItemsSource="{Binding CourseMoveTargets}">
+          <controls:MenuFlyout ItemsSource="{Binding MoveStudentsMenu}">
             <controls:MenuFlyout.ItemTemplate>
-              <DataTemplate x:DataType="vm:CourseMoveTarget">
-                <controls:MenuItem Header="{Binding CourseName}"
-                                   ItemsSource="{Binding Classes}">
+              <DataTemplate x:DataType="common:MenuViewModel">
+                <controls:MenuItem Header="{Binding Header}"
+                                   Icon="{Binding Icon}"
+                                   Command="{Binding Command}"
+                                   CommandParameter="{Binding CommandParameter}"
+                                   ItemsSource="{Binding Children}">
                   <controls:MenuItem.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ClassMoveTarget">
-                      <controls:MenuItem Header="{Binding ClassName}"
-                                         Command="{Binding #StudentsViewRoot.DataContext.MoveStudents}"
-                                         CommandParameter="{Binding}"/>
+                    <DataTemplate x:DataType="common:MenuItemViewModel">
+                      <controls:MenuItem Header="{Binding Header}"
+                                         Icon="{Binding Icon}"
+                                         Command="{Binding Command}"
+                                         CommandParameter="{Binding CommandParameter}"
+                                         ItemsSource="{Binding Children}"/>
                     </DataTemplate>
                   </controls:MenuItem.ItemTemplate>
                 </controls:MenuItem>
