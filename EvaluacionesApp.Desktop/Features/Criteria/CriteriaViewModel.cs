@@ -57,25 +57,38 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             })
             .DisposeWith(anchors);
 
-        // Reactive pipeline for criteria - rebuild when course or term changes
+        // Reactive pipeline for criteria - rebuild when course, term, or criteria change
         var criteriaCollection = new ObservableCollection<ScopedCriterionNode>();
         Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaCollection);
 
+        void RebuildCriteria(DynamicCourse? course, int term)
+        {
+            criteriaCollection.Clear();
+            if (course != null)
+            {
+                var nodes = course.FilterCriteriaTree(term)
+                    .Select(root => ScopedCriterionNode.Build(root, term))
+                    .Where(node => node != null);
+                foreach (var node in nodes!)
+                    criteriaCollection.Add(node);
+            }
+        }
+
+        // Rebuild when course or term changes
         this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedTerm)
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(t =>
-            {
-                var (course, term) = t;
-                criteriaCollection.Clear();
-                if (course != null)
-                {
-                    var nodes = course.FilterCriteriaTree(term)
-                        .Select(root => ScopedCriterionNode.Build(root, term))
-                        .Where(node => node != null);
-                    foreach (var node in nodes!)
-                        criteriaCollection.Add(node);
-                }
-            })
+            .Subscribe(t => RebuildCriteria(t.Item1, t.Item2))
+            .DisposeWith(anchors);
+
+        // Also rebuild when criteria in the selected course change
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Select(course => course?.CriteriaChanges
+                .MergeManyChangeSets(c => c.SelfAndDescendants())
+                .Throttle(TimeSpan.FromMilliseconds(100), RxApp.MainThreadScheduler)
+                .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
+            .Switch()
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(_ => RebuildCriteria(SelectedCourse, SelectedTerm))
             .DisposeWith(anchors);
 
         // Auto-select first criterion when collection changes
