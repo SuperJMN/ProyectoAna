@@ -41,6 +41,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
+    [Reactive] private DynamicStudent? selectedStudent;
 
     public ReactiveSelection<DynamicStudent, string> StudentsSelection { get; }
 
@@ -59,6 +60,13 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             new Avalonia.Controls.Selection.SelectionModel<DynamicStudent> { SingleSelect = false },
             student => student.Id);
         StudentsSelection.DisposeWith(anchors);
+
+        // Observe first selected student for details panel
+        StudentsSelection.SelectedItems
+            .ToObservableChangeSet()
+            .AutoRefresh()
+            .Subscribe(_ => SelectedStudent = StudentsSelection.SelectedItems.FirstOrDefault())
+            .DisposeWith(anchors);
 
         var canAdd = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
         var hasSelection = this.WhenAnyValue(x => x.StudentsSelection.SelectedItems.Count).Select(count => count > 0);
