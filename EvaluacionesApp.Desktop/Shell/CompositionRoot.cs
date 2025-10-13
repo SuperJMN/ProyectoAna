@@ -23,7 +23,9 @@ public static class CompositionRoot
         // Use the real Shell implementation which depends on ShellProperties and registered sections
         services.AddSingleton<IShell, Zafiro.UI.Shell.Shell>();
         services.AddSingleton(new ShellProperties("Evaluaciones", navigatorObj => CreateHeaderFromNavigator(navigatorObj)));
-        services.AddSingleton(DialogService.Create());
+        var dialogService = DialogService.Create();
+        services.AddSingleton(dialogService);
+        services.AddSingleton<IDialog>(dialogService);
 
         // Defer NotificationService initialization until TopLevel is available (Loaded)
         var topLevel = ApplicationUtils.TopLevel().GetValueOrThrow("TopLevel not ready for NotificationService");

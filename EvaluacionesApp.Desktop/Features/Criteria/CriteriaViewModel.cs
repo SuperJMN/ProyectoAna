@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Desktop.ViewModels;
+using Zafiro.Avalonia.Dialogs;
 
 namespace EvaluacionesApp.Desktop.Features.Criteria;
 
@@ -24,6 +25,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     private static readonly ReadOnlyObservableCollection<MenuViewModel> EmptyCopyMenuItems = new(new ObservableCollection<MenuViewModel>());
 
     private readonly DynamicSchoolStore store;
+    private readonly IDialog dialogService;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<CourseCriterionCopyTarget, string> courseCopyTargetsCache = new(target => target.CourseId);
     private readonly SourceCache<MenuViewModel, string> copyMenuCache = new(menu => menu.Key);
@@ -32,6 +34,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     private CompositeDisposable? courseAnchors;
     private DynamicRoot? root;
     private readonly NotifyCollectionChangedEventHandler termCollectionChanged;
+    private readonly IObservable<bool> canDeleteCriterion;
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
@@ -56,25 +59,43 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<CriterionCopyTarget?, Unit> CopyCriteria { get; }
 
-    public CriteriaViewModel(DynamicSchoolStore store)
+public CriteriaViewModel(DynamicSchoolStore store, IDialog dialogService)
+{
+    this.store = store;
+    this.dialogService = dialogService;
+    Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaInternal);
+    termCollectionChanged = (_, _) =>
     {
-        this.store = store;
-        Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaInternal);
-        termCollectionChanged = (_, _) =>
-        {
-            UpdateTerms(SelectedCourse);
-            EnsureSelectedTermExists();
-        };
-        var hasCourse = this.WhenAnyValue(x => x.SelectedCourse)
-            .Select(course => course != null);
-        var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
+        UpdateTerms(SelectedCourse);
+        EnsureSelectedTermExists();
+    };
+    var hasCourse = this.WhenAnyValue(x => x.SelectedCourse)
+        .Select(course => course != null);
+    var hasCriterion = this.WhenAnyValue(x => x.SelectedNode).Select(c => c != null);
 
-        AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
-        AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
-        DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, hasCriterion);
-        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
-        CopyCriteria = ReactiveCommand.CreateFromTask<CriterionCopyTarget?>(DoCopyCriteria, hasCourse);
-        copyMenuCache.Connect()
+    // Only allow deletion when the selected node is a leaf (no children)
+    // Note: We don't check for assessments here because they are managed reactively
+    // and the removal of the criterion will be handled by the persistence layer
+    canDeleteCriterion = this.WhenAnyValue(x => x.SelectedNode)
+        .Select(node =>
+        {
+            if (node?.Criterion == null)
+            {
+                return false;
+            }
+            
+            // Only allow delete if it's a leaf (has no children)
+            return node.Criterion.Children.Count == 0;
+        })
+        .DistinctUntilChanged()
+        .ObserveOn(RxApp.MainThreadScheduler);
+
+    AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
+    AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
+    DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, canDeleteCriterion);
+    Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+    CopyCriteria = ReactiveCommand.CreateFromTask<CriterionCopyTarget?>(DoCopyCriteria, hasCourse);
+    copyMenuCache.Connect()
             .DisposeMany()
             .AutoRefresh(menu => ((CourseCopyMenuViewModel)menu).CourseOrder)
             .AutoRefresh(menu => menu.Header)
@@ -301,7 +322,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         var idx = SelectedCourse.Criteria.Count + 1;
 var model = new Criterion
         {
-            Id = $"C{idx}",
+            Id = Guid.NewGuid().ToString(),
             Name = $"Criterion {idx}",
             Weight = 1,
             ClassId = string.Empty,
@@ -324,7 +345,7 @@ var model = new Criterion
         var idx = parent.Children.Count + 1;
 var model = new Criterion
         {
-            Id = $"{parent.Id}.{idx}",
+            Id = Guid.NewGuid().ToString(),
             Name = $"Subcriterion {idx}",
             Weight = 1,
             ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? string.Empty : parent.ClassId,
@@ -336,41 +357,62 @@ var model = new Criterion
         await ExecuteSave();
     }
 
-    async Task DoDeleteCriterion()
+async Task DoDeleteCriterion()
+{
+    if (SelectedCourse == null || SelectedNode?.Criterion == null)
     {
-        if (SelectedCourse == null || SelectedNode?.Criterion == null)
-        {
-            return;
-        }
-
-        var criterion = SelectedNode.Criterion;
-        if (criterion.Children.Any())
-        {
-            return;
-        }
-
-        var hasAssessments = SelectedCourse.Classes
-            .Where(c => string.IsNullOrWhiteSpace(criterion.ClassId) || c.Id == criterion.ClassId)
-            .SelectMany(c => c.Assessments)
-            .Any(a => a.CriterionId == criterion.Id);
-        if (hasAssessments)
-        {
-            return;
-        }
-
-        var parent = criterion.Parent;
-        if (parent != null)
-        {
-            parent.RemoveChild(criterion);
-        }
-        else
-        {
-            SelectedCourse.RemoveCriterion(criterion);
-        }
-        RefreshCriteria();
-        SelectedNode = parent != null ? FindNode(parent) ?? Criteria.FirstOrDefault() : Criteria.FirstOrDefault();
-        await ExecuteSave();
+        return;
     }
+
+    var criterion = SelectedNode.Criterion;
+
+    // Check if there are assessments (scores) referencing this criterion
+    var assessmentsWithScores = SelectedCourse.Classes
+        .SelectMany(c => c.Assessments)
+        .Where(a => a.CriterionId == criterion.Id && a.Score.HasValue)
+        .ToList();
+
+    if (assessmentsWithScores.Any())
+    {
+        var count = assessmentsWithScores.Count;
+        var confirmation = await dialogService.ShowConfirmation(
+            "Confirmar borrado",
+            $"Este criterio tiene {count} valoración(es) asociada(s). ¿Deseas borrar el criterio y todas sus valoraciones?",
+            "Sí, borrar",
+            "Cancelar");
+
+        if (!confirmation.HasValue || !confirmation.Value)
+        {
+            return;
+        }
+
+        // Remove all assessments for this criterion from all classes
+        foreach (var cls in SelectedCourse.Classes)
+        {
+            var toRemove = cls.Assessments
+                .Where(a => a.CriterionId == criterion.Id)
+                .ToList();
+
+            foreach (var assessment in toRemove)
+            {
+                cls.RemoveAssessment(assessment);
+            }
+        }
+    }
+
+    var parent = criterion.Parent;
+    if (parent != null)
+    {
+        parent.RemoveChild(criterion);
+    }
+    else
+    {
+        SelectedCourse.RemoveCriterion(criterion);
+    }
+    RefreshCriteria();
+    SelectedNode = parent != null ? FindNode(parent) ?? Criteria.FirstOrDefault() : Criteria.FirstOrDefault();
+    await ExecuteSave();
+}
 
     async Task DoCopyCriteria(CriterionCopyTarget? target)
     {
