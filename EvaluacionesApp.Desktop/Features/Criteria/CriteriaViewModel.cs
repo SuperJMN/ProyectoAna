@@ -57,95 +57,63 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             })
             .DisposeWith(anchors);
 
-        // Reactive pipeline for criteria based on selected course and term
-        var criteriaCache = new SourceCache<ScopedCriterionNode, string>(node => node.Id);
-        criteriaCache.Connect()
-            .Bind(out var criteria)
-            .Subscribe()
-            .DisposeWith(anchors);
-        Criteria = criteria;
+        // Reactive pipeline for criteria - rebuild when course or term changes
+        var criteriaCollection = new ObservableCollection<ScopedCriterionNode>();
+        Criteria = new ReadOnlyObservableCollection<ScopedCriterionNode>(criteriaCollection);
 
-        var criteriaSource = this.WhenAnyValue(
-                x => x.SelectedCourse,
-                x => x.SelectedTerm,
-                (course, term) => (course, term))
-            .Select(tuple =>
+        this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedTerm)
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(t =>
             {
-                var (course, term) = tuple;
-                if (course == null)
-                    return Observable.Return(Array.Empty<ScopedCriterionNode>());
-
-                return course.CriteriaChanges
-                    .MergeManyChangeSets(c => c.SelfAndDescendants())
-                    .AutoRefresh(c => c.Name)
-                    .AutoRefresh(c => c.Weight)
-                    .AutoRefresh(c => c.Id)
-                    .AutoRefresh(c => c.Term)
-                    .Throttle(TimeSpan.FromMilliseconds(200), RxApp.MainThreadScheduler)
-                    .Select(_ => course.FilterCriteriaTree(term)
+                var (course, term) = t;
+                criteriaCollection.Clear();
+                if (course != null)
+                {
+                    var nodes = course.FilterCriteriaTree(term)
                         .Select(root => ScopedCriterionNode.Build(root, term))
-                        .Where(node => node != null)
-                        .Select(node => node!)
-                        .ToArray());
-            })
-            .Switch();
-
-        criteriaSource
-            .Subscribe(nodes =>
-            {
-                var previous = SelectedNode?.Criterion;
-                criteriaCache.Edit(updater =>
-                {
-                    updater.Clear();
-                    updater.AddOrUpdate(nodes);
-                });
-
-                // Try to restore previous selection
-                if (previous != null)
-                {
-                    var found = criteria.SelectMany(n => n.SelfAndDescendants())
-                        .FirstOrDefault(n => ReferenceEquals(n.Criterion, previous));
-                    SelectedNode = found ?? criteria.FirstOrDefault();
-                }
-                else
-                {
-                    SelectedNode = criteria.FirstOrDefault();
+                        .Where(node => node != null);
+                    foreach (var node in nodes!)
+                        criteriaCollection.Add(node);
                 }
             })
             .DisposeWith(anchors);
 
-        // Reactive pipeline for terms based on selected course
-        var termsCache = new SourceCache<int, int>(term => term);
-        termsCache.Connect()
-            .Sort(SortExpressionComparer<int>.Ascending(x => x))
-            .Bind(out var termsCollection)
-            .Subscribe()
+        // Auto-select first criterion when collection changes
+        this.WhenAnyValue(x => x.Criteria.Count)
+            .Where(count => count > 0 && SelectedNode == null)
+            .Subscribe(_ => SelectedNode = Criteria.FirstOrDefault())
             .DisposeWith(anchors);
-        Terms = termsCollection;
+
+        // Auto-save when criteria in selected course change
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Select(course => course?.CriteriaChanges
+                .MergeManyChangeSets(c => c.SelfAndDescendants())
+                .AutoRefresh(c => c.Name)
+                .AutoRefresh(c => c.Weight)
+                .AutoRefresh(c => c.Term)
+                .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+                .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
+            .Switch()
+            .InvokeCommand(ReactiveCommand.CreateFromTask(ExecuteSave))
+            .DisposeWith(anchors);
+
+        // Reactive pipeline for terms - just bind directly to course terms
+        var termsCollection = new ObservableCollection<int>();
+        Terms = new ReadOnlyObservableCollection<int>(termsCollection);
 
         this.WhenAnyValue(x => x.SelectedCourse)
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(course =>
             {
-                var terms = course?.Terms ?? (IEnumerable<int>)new[] { 1, 2, 3 };
-                termsCache.Edit(updater =>
-                {
-                    updater.Clear();
-                    updater.AddOrUpdate(terms);
-                });
+                var terms = (course?.Terms ?? (IEnumerable<int>)new[] { 1, 2, 3 }).OrderBy(x => x);
+                termsCollection.Clear();
+                foreach (var term in terms)
+                    termsCollection.Add(term);
 
-                // Ensure selected term exists in the new terms collection
-                if (!terms.Contains(SelectedTerm))
-                {
-                    SelectedTerm = terms.FirstOrDefault();
-                }
+                // Ensure selected term exists
+                if (!termsCollection.Contains(SelectedTerm))
+                    SelectedTerm = termsCollection.FirstOrDefault();
             })
-            .DisposeWith(anchors);
-
-        // Auto-save when criteria change
-        criteriaSource
-            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
-            .Select(_ => Unit.Default)
-            .InvokeCommand(ReactiveCommand.CreateFromTask(ExecuteSave))
             .DisposeWith(anchors);
 
         var hasCourse = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
