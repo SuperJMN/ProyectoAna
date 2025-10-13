@@ -35,25 +35,17 @@
             <TextBlock Text="Trimestre:" VerticalAlignment="Center" Margin="12,0,0,0" />
             <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
         </StackPanel>
+        
+      
 
         <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
-            <!-- Lista de alumnos -->
-            <ListBox Grid.Column="0"
-                     ItemsSource="{Binding ScoreRows}"
-                     SelectedItem="{Binding SelectedScoreRow}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Vertical" Margin="6">
-                            <TextBlock Text="{Binding Student.FullName}" />
-                            <TextBlock FontSize="12" Foreground="{DynamicResource SystemAccentColor}">
-                                <TextBlock.Text>
-                                    <Binding Path="Total" StringFormat="Total: {0:F2}" />
-                                </TextBlock.Text>
-                            </TextBlock>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <DataGrid ItemsSource="{Binding ScoreRows}" SelectedItem="{Binding SelectedScoreRow}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
+                    <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
+                    <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
+                </DataGrid.Columns>
+            </DataGrid>
             
             <GridSplitter Grid.Column="1" />
 
