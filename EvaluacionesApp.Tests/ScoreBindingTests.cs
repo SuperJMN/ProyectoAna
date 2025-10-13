@@ -1,6 +1,6 @@
 using System.Reactive.Concurrency;
 using EvaluacionesApp.Desktop.Dynamic;
-using EvaluacionesApp.Desktop.Views.Grades;
+using EvaluacionesApp.Desktop.Features.Grades;
 using Xunit;
 
 namespace EvaluacionesApp.Tests;

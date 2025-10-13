@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
 using DynamicData;
-using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 

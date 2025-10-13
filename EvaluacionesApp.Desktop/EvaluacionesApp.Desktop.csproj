@@ -9,15 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Models\" />
-    <Folder Include="Shell\" />
-    <Folder Include="Views\Grades\" />
-    <Folder Include="Views\Maintenance\" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="**/*.axaml" />
+    <AdditionalFiles Include="**/*.axaml" Exclude="Views/Grades/**/*.axaml" />
   </ItemGroup>
 
   <ItemGroup>

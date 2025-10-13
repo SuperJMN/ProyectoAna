@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Dynamic;
-using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
-using EvaluacionesApp.Desktop.Views.Grades;
+using EvaluacionesApp.Desktop.Features.Grades;
 using Xunit;
 
 namespace EvaluacionesApp.Tests;

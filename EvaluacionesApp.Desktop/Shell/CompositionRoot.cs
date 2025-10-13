@@ -36,11 +36,11 @@ public static class CompositionRoot
         services.AddSingleton<IDynamicSchoolStore>(sp => sp.GetRequiredService<DynamicSchoolStore>());
 
         // VMs
-        services.AddTransient<Views.Grades.GradesViewModel>();
-        services.AddTransient<Views.Maintenance.CoursesViewModel>();
-        services.AddTransient<Views.Maintenance.ClassesViewModel>();
-        services.AddTransient<Views.Maintenance.StudentsViewModel>();
-        services.AddTransient<Views.Maintenance.CriteriaViewModel>();
+        services.AddTransient<Features.Grades.GradesViewModel>();
+        services.AddTransient<Features.Courses.CoursesViewModel>();
+        services.AddTransient<Features.Classes.ClassesViewModel>();
+        services.AddTransient<Features.Students.StudentsViewModel>();
+        services.AddTransient<Features.Criteria.CriteriaViewModel>();
 
         // Sections registration
         AddSections(services);
@@ -56,11 +56,11 @@ public static class CompositionRoot
         // Register sections using Zafiro's navigation builder
         AddNavigation.RegisterSections(services, builder =>
         {
-            builder.Add<Views.Grades.GradesViewModel>("Notas", new Icon { Source = "mdi-numeric-3-box-multiple" }, true);
-            builder.Add<Views.Maintenance.CoursesViewModel>("Cursos", new Icon { Source = "mdi-school" }, true);
-            builder.Add<Views.Maintenance.ClassesViewModel>("Clases", new Icon { Source = "mdi-google-classroom" }, true);
-            builder.Add<Views.Maintenance.StudentsViewModel>("Alumnos", new Icon { Source = "mdi-account-group" }, true);
-            builder.Add<Views.Maintenance.CriteriaViewModel>("Criterios", new Icon { Source = "mdi-format-list-bulleted" }, true);
+            builder.Add<Features.Grades.GradesViewModel>("Notas", new Icon { Source = "mdi-numeric-3-box-multiple" }, true);
+            builder.Add<Features.Courses.CoursesViewModel>("Cursos", new Icon { Source = "mdi-school" }, true);
+            builder.Add<Features.Classes.ClassesViewModel>("Clases", new Icon { Source = "mdi-google-classroom" }, true);
+            builder.Add<Features.Students.StudentsViewModel>("Alumnos", new Icon { Source = "mdi-account-group" }, true);
+            builder.Add<Features.Criteria.CriteriaViewModel>("Criterios", new Icon { Source = "mdi-format-list-bulleted" }, true);
         }, logger: null, scheduler: RxApp.MainThreadScheduler);
     }
 

@@ -1,5 +1,5 @@
 using System;
-using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 

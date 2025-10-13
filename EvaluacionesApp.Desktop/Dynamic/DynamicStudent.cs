@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 

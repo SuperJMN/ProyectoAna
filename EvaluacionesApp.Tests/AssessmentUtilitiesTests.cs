@@ -1,4 +1,4 @@
-using EvaluacionesApp.Desktop.Models;
+using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Desktop.ViewModels;
 
 namespace EvaluacionesApp.Tests;
