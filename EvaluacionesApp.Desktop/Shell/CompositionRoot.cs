@@ -16,7 +16,7 @@ namespace EvaluacionesApp.Desktop.Shell;
 
 public static class CompositionRoot
 {
-    public static MainViewModel Create()
+    public static async System.Threading.Tasks.Task<MainViewModel> CreateAsync()
     {
         ServiceCollection services = new();
 
@@ -33,8 +33,15 @@ public static class CompositionRoot
         services.AddSingleton<INotificationService>(new NotificationService(notificationManager));
 
         // Application services
-        services.AddSingleton<Services.PersistenceService>();
-        services.AddSingleton<DynamicSchoolStore>();
+        var persistenceService = new Services.PersistenceService();
+        services.AddSingleton(persistenceService);
+        
+        // Load data asynchronously at startup
+        var schoolModel = await persistenceService.Load();
+        var root = new DynamicRoot(schoolModel);
+        
+        services.AddSingleton(root);
+        services.AddSingleton<DynamicSchoolStore>(sp => new DynamicSchoolStore(sp.GetRequiredService<DynamicRoot>(), sp.GetRequiredService<Services.PersistenceService>()));
         services.AddSingleton<IDynamicSchoolStore>(sp => sp.GetRequiredService<DynamicSchoolStore>());
 
         // VMs

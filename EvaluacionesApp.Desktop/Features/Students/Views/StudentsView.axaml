@@ -30,7 +30,7 @@
       <Button Content="Delete" Command="{Binding DeleteStudent}"/>
       <Button Content="Mover a clase"
               Margin="12,0,0,0"
-              IsEnabled="{Binding HasSelectedStudents}">
+              IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
         <Button.Flyout>
           <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
         </Button.Flyout>
@@ -38,37 +38,37 @@
     </StackPanel>
     <ListBox Grid.Row="1" Grid.Column="0"
              ItemsSource="{Binding SelectedClass.Students}"
-             SelectedItem="{Binding SelectedStudent}"
              SelectionMode="Multiple"
-             Selection="{Binding StudentsSelection}">
+             Selection="{Binding StudentsSelection.SelectionModel}">
       <ListBox.ItemTemplate>
         <DataTemplate>
           <TextBlock Text="{Binding FullName}"/>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
+    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8"
+                DataContext="{Binding StudentsSelection.SelectedItems[0]}">
       <TextBlock Text="Student details" FontWeight="Bold"/>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
-        <TextBox Width="160" Text="{Binding SelectedStudent.FirstName}"/>
+        <TextBox Width="160" Text="{Binding FirstName}"/>
         <TextBlock Text="Apellidos:" VerticalAlignment="Center" Margin="12,0,0,0"/>
-        <TextBox Width="240" Text="{Binding SelectedStudent.LastName}"/>
+        <TextBox Width="240" Text="{Binding LastName}"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Positivos:" VerticalAlignment="Center"/>
         <NumericUpDown Width="120"
                                 Minimum="0"
                                 Increment="1"
-                                Value="{Binding SelectedStudent.Positivos}"/>
+                                Value="{Binding Positivos}"/>
         <TextBlock Text="Negativos:" VerticalAlignment="Center" Margin="12,0,0,0"/>
         <NumericUpDown Width="120"
                                 Minimum="0"
                                 Increment="1"
-                                Value="{Binding SelectedStudent.Negativos}"/>
+                                Value="{Binding Negativos}"/>
       </StackPanel>
       <TextBlock Text="Observaciones:"/>
-      <TextBox Text="{Binding SelectedStudent.Observaciones}"
+      <TextBox Text="{Binding Observaciones}"
                AcceptsReturn="True"
                Height="120"
                TextWrapping="Wrap"/>

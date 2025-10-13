@@ -6,7 +6,6 @@ namespace EvaluacionesApp.Desktop.Dynamic;
 
 public interface IDynamicSchoolStore : IDisposable
 {
-    Task<DynamicRoot> GetRoot(CancellationToken cancellationToken = default);
+    DynamicRoot Root { get; }
     Task SaveAsync(CancellationToken cancellationToken = default);
-    Task ReloadAsync(CancellationToken cancellationToken = default);
 }

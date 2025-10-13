@@ -43,7 +43,7 @@ public partial class ClassesViewModel : ReactiveObject, IDisposable
 
     async Task Load()
     {
-        root = await store.GetRoot();
+        root = store.Root;
         Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
         SelectedClass = SelectedCourse?.Classes.FirstOrDefault();
@@ -51,6 +51,7 @@ public partial class ClassesViewModel : ReactiveObject, IDisposable
         this.WhenAnyValue(x => x.SelectedCourse)
             .Subscribe(HandleSelectedCourseChanged)
             .DisposeWith(anchors);
+        await Task.CompletedTask;
     }
 
     void HandleSelectedCourseChanged(DynamicCourse? course)

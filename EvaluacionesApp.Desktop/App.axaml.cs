@@ -29,7 +29,7 @@ public partial class App : Application
             IconProvider.Current
                 .Register<FontAwesomeIconProvider>()
                 .Register<MaterialDesignIconProvider>();
-            this.Connect(() => new MainView(), view => CompositionRoot.Create(), () => new MainWindow());
+            this.Connect(() => new MainView(), async view => await CompositionRoot.CreateAsync(), () => new MainWindow());
         }
 
         base.OnFrameworkInitializationCompleted();

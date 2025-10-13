@@ -40,7 +40,7 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
 
     async Task Load()
     {
-        root = await store.GetRoot();
+        root = store.Root;
         Courses = root.Courses;
         SelectedCourse = Courses.FirstOrDefault();
 
@@ -51,11 +51,12 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(anchors);
+        await Task.CompletedTask;
     }
 
     async Task DoAddCourse()
     {
-        var targetRoot = await store.GetRoot();
+        var targetRoot = store.Root;
         var idx = targetRoot.Courses.Count + 1;
 var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Course {idx}" });
         SelectedCourse = course;

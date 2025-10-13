@@ -6,7 +6,6 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls.Selection;
 using DynamicData;
 using DynamicData.Binding;
 using DynamicData.Kernel;
@@ -15,6 +14,7 @@ using ReactiveUI.SourceGenerators;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
 using EvaluacionesApp.Desktop.Persistence;
+using Zafiro.Avalonia.Misc;
 
 namespace EvaluacionesApp.Desktop.Features.Students;
 
@@ -30,11 +30,9 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
     private readonly Dictionary<DynamicCourse, IDisposable> courseSubscriptions = new();
     private readonly Dictionary<DynamicCourse, CourseMoveTarget> courseMoveTargetsByCourse = new();
     private readonly Dictionary<CourseMoveTarget, CourseMoveMenuViewModel> moveMenusByTarget = new();
-    private readonly SelectionModel<DynamicStudent> studentsSelection = new() { SingleSelect = false };
     private CompositeDisposable? courseAnchors;
     private CompositeDisposable? classAnchors;
     private DynamicRoot? root;
-    private IReadOnlyList<DynamicStudent> selectedStudents = Array.Empty<DynamicStudent>();
 
     [Reactive(SetModifier = AccessModifier.Private)]
     private ReadOnlyObservableCollection<DynamicCourse> courses = EmptyCourses;
@@ -43,12 +41,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
-    [Reactive] private DynamicStudent? selectedStudent;
-    [Reactive] private bool hasSelectedStudents;
 
-    public SelectionModel<DynamicStudent> StudentsSelection => studentsSelection;
-
-    public IReadOnlyList<DynamicStudent> SelectedStudents => selectedStudents;
+    public ReactiveSelection<DynamicStudent, string> StudentsSelection { get; }
 
     public ReadOnlyObservableCollection<MenuViewModel> MoveStudentsMenu => moveStudentsMenu;
 
@@ -61,11 +55,13 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
     {
         this.store = store;
 
-        studentsSelection.SelectionChanged += HandleStudentsSelectionChanged;
-        anchors.Add(Disposable.Create(() => studentsSelection.SelectionChanged -= HandleStudentsSelectionChanged));
+        StudentsSelection = new ReactiveSelection<DynamicStudent, string>(
+            new Avalonia.Controls.Selection.SelectionModel<DynamicStudent> { SingleSelect = false },
+            student => student.Id);
+        StudentsSelection.DisposeWith(anchors);
 
         var canAdd = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
-        var hasSelection = this.WhenAnyValue(x => x.HasSelectedStudents);
+        var hasSelection = this.WhenAnyValue(x => x.StudentsSelection.SelectedItems.Count).Select(count => count > 0);
         var hasClass = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
         var canDelete = hasSelection;
         var canMove = hasClass.CombineLatest(hasSelection, (cls, selected) => cls && selected);
@@ -89,7 +85,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
     async Task Load()
     {
-        root = await store.GetRoot();
+        root = store.Root;
         Courses = root.Courses;
         RegisterExistingCourses(root);
 
@@ -106,6 +102,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             .DisposeWith(anchors);
 
         SelectedCourse = Courses.FirstOrDefault();
+        await Task.CompletedTask;
     }
 
     void RegisterExistingCourses(DynamicRoot currentRoot)
@@ -226,11 +223,11 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         classAnchors?.Dispose();
         classAnchors = null;
 
-        StudentsSelection.Source = cls?.Students;
+        StudentsSelection.SelectionModel.Source = cls?.Students;
 
         if (cls == null)
         {
-            SelectStudents(Array.Empty<DynamicStudent>());
+            StudentsSelection.Clear.Execute().Subscribe();
             return;
         }
 
@@ -248,52 +245,13 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             .InvokeCommand(Save)
             .DisposeWith(classAnchors);
 
-        SelectStudents(cls.Students.Take(1));
-    }
-
-    void HandleStudentsSelectionChanged(object? sender, SelectionModelSelectionChangedEventArgs<DynamicStudent> _)
-    {
-        UpdateSelectionSnapshot();
-    }
-
-    void SelectStudents(IEnumerable<DynamicStudent> students)
-    {
-        StudentsSelection.Clear();
-
-        if (SelectedClass == null)
+        // Select first student if available
+        if (cls.Students.Count > 0)
         {
-            UpdateSelectionSnapshot();
-            return;
+            StudentsSelection.SelectionModel.Select(0);
         }
-
-        var list = students?.Where(student => student != null).ToList() ?? new List<DynamicStudent>();
-        foreach (var student in list)
-        {
-            var index = SelectedClass.Students.IndexOf(student);
-            if (index >= 0)
-            {
-                StudentsSelection.Select(index);
-            }
-        }
-
-        if (list.Count == 0 && SelectedClass.Students.Count > 0)
-        {
-            StudentsSelection.Select(0);
-        }
-
-        UpdateSelectionSnapshot();
     }
 
-    void UpdateSelectionSnapshot()
-    {
-        var snapshot = StudentsSelection.SelectedItems
-            .OfType<DynamicStudent>()
-            .ToList();
-        selectedStudents = snapshot;
-        this.RaisePropertyChanged(nameof(SelectedStudents));
-        HasSelectedStudents = snapshot.Count > 0;
-        SelectedStudent = snapshot.FirstOrDefault();
-    }
 
     async Task DoAddStudent()
     {
@@ -304,14 +262,13 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
         var idx = SelectedClass.Students.Count + 1;
 var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
-        var student = SelectedClass.AddStudent(model);
-        SelectedStudent = student;
+        SelectedClass.AddStudent(model);
         await ExecuteSave();
     }
 
     async Task DoDeleteStudent()
     {
-        var studentsToDelete = SelectedStudents.ToList();
+        var studentsToDelete = StudentsSelection.SelectedItems.ToList();
         if (studentsToDelete.Count == 0 || SelectedClass == null)
         {
             return;
@@ -322,7 +279,6 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
             SelectedClass.RemoveStudent(student);
         }
 
-        SelectedStudent = SelectedClass.Students.FirstOrDefault();
         await ExecuteSave();
     }
 
@@ -333,7 +289,7 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
             return;
         }
 
-        var studentsToMove = SelectedStudents.ToList();
+        var studentsToMove = StudentsSelection.SelectedItems.ToList();
         if (studentsToMove.Count == 0)
         {
             return;
@@ -344,17 +300,14 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
             return;
         }
 
-        var newStudents = new List<DynamicStudent>();
         foreach (var student in studentsToMove)
         {
             SelectedClass.RemoveStudent(student);
-            var created = target.Class.AddStudent(student.ToDomain());
-            newStudents.Add(created);
+            target.Class.AddStudent(student.ToDomain());
         }
 
         SelectedCourse = target.Course;
         SelectedClass = target.Class;
-        SelectStudents(newStudents);
 
         await ExecuteSave();
     }
@@ -463,7 +416,6 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
         classAnchors?.Dispose();
         courseAnchors?.Dispose();
         anchors.Dispose();
-        studentsSelection.SelectionChanged -= HandleStudentsSelectionChanged;
 
         foreach (var subscription in courseSubscriptions.Values.ToList())
         {
