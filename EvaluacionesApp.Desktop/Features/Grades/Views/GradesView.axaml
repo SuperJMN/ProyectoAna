@@ -62,11 +62,6 @@
                     </TextBlock.Text>
                 </TextBlock>
                 <TreeView ItemsSource="{Binding CriteriaTree}">
-                    <TreeView.ItemContainerTheme>
-                        <ControlTheme TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
-                            <Setter Property="IsExpanded" Value="True" />
-                        </ControlTheme>
-                    </TreeView.ItemContainerTheme>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">

@@ -47,7 +47,7 @@
         <TextBlock Text="Weight:" VerticalAlignment="Center"/>
         <TextBox x:Name="WeightTextBox" Width="120" Text="{Binding SelectedNode.Criterion.Weight}"/>
       </StackPanel>
-      <TextBlock Text="No se permite borrar un criterio con subcriterios o con notas."/>
+      <TextBlock Text="No se permite borrar un criterio con subcriterios."/>
     </StackPanel>
   </Grid>
 </UserControl>
