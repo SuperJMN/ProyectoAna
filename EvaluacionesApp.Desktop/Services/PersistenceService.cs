@@ -32,43 +32,47 @@ public class PersistenceService
             return;
         }
 
-        // Try to resolve persistencia.json by walking up the directory tree, avoiding build folders (bin/obj)
-        DataPath = ResolveDataPath() ?? Path.Combine(Directory.GetCurrentDirectory(), "persistencia.json");
+        DataPath = GetDefaultDataPath();
     }
 
-    static string? ResolveDataPath()
+    static string GetDefaultDataPath()
     {
-        // Prefer a file outside build output folders. Search from both CWD and BaseDirectory upwards.
-        var starts = new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory };
-        foreach (var start in starts)
+        // Get the application data folder based on OS
+        // Linux: ~/.local/share/ProyectoAna/
+        // Windows: %APPDATA%\ProyectoAna\
+        // macOS: ~/Library/Application Support/ProyectoAna/
+        
+        string appDataFolder;
+        
+        if (OperatingSystem.IsWindows())
         {
-            var path = FindUpwards(start);
-            if (path != null) return path;
+            // Windows: Use APPDATA (Roaming)
+            appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         }
-        return null;
-    }
-
-    static string? FindUpwards(string startDir)
-    {
-        var di = new DirectoryInfo(startDir);
-        string? best = null;
-        while (di != null)
+        else if (OperatingSystem.IsLinux())
         {
-            var candidate = Path.Combine(di.FullName, "persistencia.json");
-            if (File.Exists(candidate) && !IsInBuildFolder(di.FullName))
-            {
-                // Keep walking to prefer higher-level files (e.g., repo root) over bin copies
-                best = candidate;
-            }
-            di = di.Parent;
+            // Linux: Use XDG_DATA_HOME or fallback to ~/.local/share
+            var xdgDataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+            appDataFolder = !string.IsNullOrWhiteSpace(xdgDataHome)
+                ? xdgDataHome
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share");
         }
-        return best;
-    }
-
-    static bool IsInBuildFolder(string path)
-    {
-        var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return parts.Any(p => string.Equals(p, "bin", StringComparison.OrdinalIgnoreCase) || string.Equals(p, "obj", StringComparison.OrdinalIgnoreCase));
+        else if (OperatingSystem.IsMacOS())
+        {
+            // macOS: Use ~/Library/Application Support
+            appDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Library",
+                "Application Support");
+        }
+        else
+        {
+            // Fallback for other platforms
+            appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        }
+        
+        var appFolder = Path.Combine(appDataFolder, "ProyectoAna");
+        return Path.Combine(appFolder, "persistencia.json");
     }
 
     public async Task<Root> Load()
