@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Linq;
 using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
@@ -24,9 +26,20 @@ public partial class DynamicStudent : ReactiveObject
         positivos = Math.Max(0, model.Positivos);
         negativos = Math.Max(0, model.Negativos);
         observaciones = model.Observaciones;
+
+        this.WhenAnyValue(x => x.Positivos)
+            .Skip(1)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(PositivosRange)));
+
+        this.WhenAnyValue(x => x.Negativos)
+            .Skip(1)
+            .Subscribe(_ => this.RaisePropertyChanged(nameof(NegativosRange)));
     }
 
     public string Id => id;
+
+    public IEnumerable<int> PositivosRange => Enumerable.Range(0, Math.Max(0, Positivos));
+    public IEnumerable<int> NegativosRange => Enumerable.Range(0, Math.Max(0, Negativos));
 
     public string FirstName
     {
