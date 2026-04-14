@@ -7,7 +7,9 @@ github:
   enabled: true
   owner: SuperJMN
   repo: ProyectoAna
-  tokenEnvVar: GITHUB_TOKEN
+  token:
+    from: env
+    name: GITHUB_TOKEN
   outputDir: artifacts
   packages:
     - project: EvaluacionesApp.Desktop/EvaluacionesApp.Desktop.csproj
