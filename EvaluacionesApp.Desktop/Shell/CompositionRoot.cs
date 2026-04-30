@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using EvaluacionesApp.Desktop.Dynamic;
+using Serilog;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.Avalonia.Services;
 using Zafiro.UI;
@@ -14,10 +15,14 @@ public static class CompositionRoot
 {
     public static async Task<CompositionResult> CreateAsync()
     {
+        var logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .CreateLogger();
+
         var services = new ServiceCollection();
 
-        services.AddZafiroShell();
-        services.AddAllSectionsFromAttributes();
+        services.AddZafiroShell(logger: logger);
+        services.AddAllSectionsFromAttributes(logger);
 
         var dialogService = DialogService.Create();
         services.AddSingleton(dialogService);

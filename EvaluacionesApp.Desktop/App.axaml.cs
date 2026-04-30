@@ -7,6 +7,7 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Shell;
 using EvaluacionesApp.Desktop.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Zafiro.Avalonia.Icons;
 using Zafiro.Avalonia.Misc;
 using Zafiro.Avalonia.Controls.Shell;
 
@@ -23,6 +24,8 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        IconControlProviderRegistry.Register(new OptrisIconControlProvider(), asDefault: true);
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             this.Connect(
