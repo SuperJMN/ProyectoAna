@@ -11,6 +11,7 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Zafiro.UI;
 
 namespace EvaluacionesApp.Desktop.Features.Courses;
 
@@ -18,7 +19,8 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
 
-    private readonly DynamicSchoolStore store;
+    private readonly IDynamicSchoolStore store;
+    private readonly INotificationService notifications;
     private readonly CompositeDisposable anchors = new();
     private DynamicRoot? root;
 
@@ -30,11 +32,15 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> AddCourse { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
 
-    public CoursesViewModel(DynamicSchoolStore store)
+    public CoursesViewModel(IDynamicSchoolStore store, INotificationService notifications)
     {
         this.store = store;
+        this.notifications = notifications;
         AddCourse = ReactiveCommand.CreateFromTask(DoAddCourse);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        Save.ThrownExceptions
+            .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los cursos", ex.Message))
+            .DisposeWith(anchors);
         _ = Load();
     }
 

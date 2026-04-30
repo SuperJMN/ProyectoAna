@@ -41,8 +41,7 @@ public static class CompositionRoot
         var root = new DynamicRoot(schoolModel);
         
         services.AddSingleton(root);
-        services.AddSingleton<DynamicSchoolStore>(sp => new DynamicSchoolStore(sp.GetRequiredService<DynamicRoot>(), sp.GetRequiredService<Services.PersistenceService>()));
-        services.AddSingleton<IDynamicSchoolStore>(sp => sp.GetRequiredService<DynamicSchoolStore>());
+        services.AddSingleton<IDynamicSchoolStore>(sp => new DynamicSchoolStore(sp.GetRequiredService<DynamicRoot>(), sp.GetRequiredService<Services.PersistenceService>()));
 
         // VMs
         services.AddTransient<Features.Grades.GradesViewModel>();

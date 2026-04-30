@@ -15,6 +15,7 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
 using EvaluacionesApp.Desktop.Persistence;
 using Zafiro.Avalonia.Misc;
+using Zafiro.UI;
 
 namespace EvaluacionesApp.Desktop.Features.Students;
 
@@ -23,7 +24,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
     private static readonly ReadOnlyObservableCollection<MenuViewModel> EmptyMenuItems = new(new ObservableCollection<MenuViewModel>());
 
-    private readonly DynamicSchoolStore store;
+    private readonly IDynamicSchoolStore store;
+    private readonly INotificationService notifications;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<CourseMoveTarget, string> courseMoveTargetsCache = new(target => target.CourseId);
     private readonly SourceCache<MenuViewModel, string> moveMenuCache = new(menu => menu.Key);
@@ -52,9 +54,10 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<ClassMoveTarget?, Unit> MoveStudents { get; }
 
-    public StudentsViewModel(DynamicSchoolStore store)
+    public StudentsViewModel(IDynamicSchoolStore store, INotificationService notifications)
     {
         this.store = store;
+        this.notifications = notifications;
 
         StudentsSelection = new ReactiveSelection<DynamicStudent, string>(
             new Avalonia.Controls.Selection.SelectionModel<DynamicStudent> { SingleSelect = false },
@@ -77,6 +80,9 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        Save.ThrownExceptions
+            .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los alumnos", ex.Message))
+            .DisposeWith(anchors);
         MoveStudents = ReactiveCommand.CreateFromTask<ClassMoveTarget?>(DoMoveStudents, canMove);
         moveMenuCache.Connect()
             .DisposeMany()

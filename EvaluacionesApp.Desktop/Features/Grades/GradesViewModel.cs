@@ -36,6 +36,17 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     [Reactive]
     private IEnumerable<ScopedCriterionNode> criteriaTree = Enumerable.Empty<ScopedCriterionNode>();
 
+    private readonly Zafiro.UI.INotificationService? notifications;
+
+    public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
+        : this(store, scheduler, autoSaveInterval)
+    {
+        this.notifications = notifications;
+        Save.ThrownExceptions
+            .Subscribe(ex => _ = notifications.Show("No se pudieron guardar las notas", ex.Message))
+            .DisposeWith(anchors);
+    }
+
     public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
     {
         this.store = store;

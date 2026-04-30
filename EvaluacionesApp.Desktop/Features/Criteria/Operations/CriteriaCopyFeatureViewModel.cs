@@ -24,13 +24,13 @@ public sealed class CriteriaCopyFeatureViewModel : ReactiveObject, IDisposable
     private readonly Dictionary<CourseCriterionCopyTarget, CourseCopyMenuViewModel> copyMenusByTarget = new();
     private readonly Dictionary<DynamicCourse, CourseCriterionCopyTarget> courseCopyTargetsByCourse = new();
     private readonly SourceCache<CourseCriterionCopyTarget, string> courseCopyTargetsCache = new(target => target.CourseId);
-    private readonly DynamicSchoolStore store;
+    private readonly IDynamicSchoolStore store;
     private readonly ReadOnlyObservableCollection<MenuViewModel> copyCriteriaMenu = EmptyCopyMenuItems;
     private readonly IObservable<IReadOnlyList<ScopedCriterionNode>> criteriaObservable;
     private readonly IObservable<DynamicCourse?> selectedCourseObservable;
 
     public CriteriaCopyFeatureViewModel(
-        DynamicSchoolStore store,
+        IDynamicSchoolStore store,
         IObservable<IReadOnlyList<ScopedCriterionNode>> criteriaObservable,
         IObservable<DynamicCourse?> selectedCourseObservable)
     {

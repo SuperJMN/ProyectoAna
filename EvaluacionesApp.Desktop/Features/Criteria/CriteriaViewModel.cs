@@ -15,6 +15,7 @@ using EvaluacionesApp.Desktop.ViewModels;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Zafiro.Avalonia.Dialogs;
+using Zafiro.UI;
 
 namespace EvaluacionesApp.Desktop.Features.Criteria;
 
@@ -22,7 +23,8 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable anchors = new();
     private readonly IDialog dialogService;
-    private readonly DynamicSchoolStore store;
+    private readonly IDynamicSchoolStore store;
+    private readonly INotificationService notifications;
     private readonly CriteriaCopyFeatureViewModel copyFeature;
     private readonly DynamicRoot root;
 
@@ -30,10 +32,11 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     [Reactive] private ScopedCriterionNode? selectedNode;
     [Reactive] private int selectedTerm = 1;
 
-    public CriteriaViewModel(DynamicSchoolStore store, IDialog dialogService)
+    public CriteriaViewModel(IDynamicSchoolStore store, IDialog dialogService, INotificationService notifications)
     {
         this.store = store;
         this.dialogService = dialogService;
+        this.notifications = notifications;
         root = store.Root;
 
         // Reactive setup for courses
@@ -140,6 +143,9 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
         DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, canDeleteCriterion);
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        Save.ThrownExceptions
+            .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los criterios", ex.Message))
+            .DisposeWith(anchors);
 
         var criteriaObservable = this.WhenAnyValue(x => x.Criteria)
             .Select(c => (IReadOnlyList<ScopedCriterionNode>)c);
