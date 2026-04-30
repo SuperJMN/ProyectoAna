@@ -8,31 +8,20 @@ namespace EvaluacionesApp.Tests.Support;
 
 public sealed class RecordingSchoolStore : IDynamicSchoolStore
 {
-    private readonly DynamicRoot root;
-
     public RecordingSchoolStore(DynamicRoot root)
     {
         ArgumentNullException.ThrowIfNull(root);
-        this.root = root;
+        Root = root;
     }
 
-    public int SaveCount { get; private set; }
+    public DynamicRoot Root { get; }
 
-    public int ReloadCount { get; private set; }
+    public int SaveCount { get; private set; }
 
     public static RecordingSchoolStore FromDomain(Root domainRoot)
     {
         ArgumentNullException.ThrowIfNull(domainRoot);
         return new RecordingSchoolStore(new DynamicRoot(domainRoot));
-    }
-
-    public Task<DynamicRoot> GetRoot(CancellationToken cancellationToken = default)
-        => Task.FromResult(root);
-
-    public Task ReloadAsync(CancellationToken cancellationToken = default)
-    {
-        ReloadCount++;
-        return Task.CompletedTask;
     }
 
     public Task SaveAsync(CancellationToken cancellationToken = default)
@@ -43,6 +32,6 @@ public sealed class RecordingSchoolStore : IDynamicSchoolStore
 
     public void Dispose()
     {
-        root.Dispose();
+        Root.Dispose();
     }
 }

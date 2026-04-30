@@ -44,7 +44,7 @@ public class ScoreRowTests
         };
 
         using var store = TestStoreFactory.Create(root);
-        var course = (await store.GetRoot()).Courses[0];
+        var course = store.Root.Courses[0];
         var cls = course.Classes[0];
         var student = cls.Students[0];
         var leaves = new List<DynamicCriterion>(course.Criteria);
@@ -101,7 +101,7 @@ public class ScoreRowTests
         };
 
         using var store = TestStoreFactory.Create(root);
-        var course = (await store.GetRoot()).Courses[0];
+        var course = store.Root.Courses[0];
         var cls = course.Classes[0];
         var student = cls.Students[0];
         var row = new ScoreRow(cls, student, course.Criteria, 1, scheduler);

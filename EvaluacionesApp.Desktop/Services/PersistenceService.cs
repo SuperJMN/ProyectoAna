@@ -84,21 +84,40 @@ public class PersistenceService
             {
                 return new Root();
             }
-            await using var s = File.OpenRead(DataPath);
-            var persisted = await JsonSerializer.DeserializeAsync<PersistedRoot>(s, options);
-            var result = ConvertToDomain(persisted);
-            LastSanityReport = SanityChecker.Analyze(result);
-            SanityChecker.LogReport(LastSanityReport);
-            EnsureCourseTerms(result);
-            return result;
-        }
-        catch
-        {
-            return new Root();
+            try
+            {
+                await using var s = File.OpenRead(DataPath);
+                var persisted = await JsonSerializer.DeserializeAsync<PersistedRoot>(s, options);
+                var result = ConvertToDomain(persisted);
+                LastSanityReport = SanityChecker.Analyze(result);
+                SanityChecker.LogReport(LastSanityReport);
+                EnsureCourseTerms(result);
+                return result;
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidDataException or FormatException)
+            {
+                QuarantineCorruptFile(ex);
+                throw;
+            }
         }
         finally
         {
             _fileLock.Release();
+        }
+    }
+
+    void QuarantineCorruptFile(Exception cause)
+    {
+        try
+        {
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
+            var quarantine = $"{DataPath}.corrupt-{timestamp}.json";
+            File.Copy(DataPath, quarantine, overwrite: true);
+            Console.Error.WriteLine($"[PersistenceService] Corrupt data file detected at '{DataPath}'. Quarantined copy: '{quarantine}'. Cause: {cause.Message}");
+        }
+        catch (Exception copyEx)
+        {
+            Console.Error.WriteLine($"[PersistenceService] Failed to quarantine corrupt data file '{DataPath}': {copyEx.Message}");
         }
     }
 
@@ -121,10 +140,10 @@ public class PersistenceService
                 await s.FlushAsync();
             }
             
-            // Atomic replace
+            // Atomic replace with backup of previous version
             if (File.Exists(DataPath))
             {
-                File.Replace(tempPath, DataPath, null);
+                File.Replace(tempPath, DataPath, DataPath + ".bak", ignoreMetadataErrors: true);
             }
             else
             {

@@ -62,7 +62,7 @@ public class CriterionScoreAggregatorTests
         };
 
         using var store = TestStoreFactory.Create(root);
-        var course = (await store.GetRoot()).Courses[0];
+        var course = store.Root.Courses[0];
         var cls = course.Classes[0];
         var student = cls.Students[0];
         var leaves = course.EnumerateLeafCriteria(1).ToList();
@@ -124,7 +124,7 @@ public class CriterionScoreAggregatorTests
         };
 
         using var store = TestStoreFactory.Create(root);
-        var course = (await store.GetRoot()).Courses[0];
+        var course = store.Root.Courses[0];
         var cls = course.Classes[0];
         var student = cls.Students[0];
         var leaves = course.EnumerateLeafCriteria(1).ToList();
