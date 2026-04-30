@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Markup.Xaml;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Shell;
@@ -32,7 +33,7 @@ public partial class App : Application
                 () => new ShellView(),
                 _ =>
                 {
-                    var result = CompositionRoot.CreateAsync().GetAwaiter().GetResult();
+                    var result = Task.Run(CompositionRoot.CreateAsync).GetAwaiter().GetResult();
                     services = result.Services;
                     return result.Shell;
                 },
