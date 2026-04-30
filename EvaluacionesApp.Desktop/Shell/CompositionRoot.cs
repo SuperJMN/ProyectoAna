@@ -16,7 +16,7 @@ namespace EvaluacionesApp.Desktop.Shell;
 
 public static class CompositionRoot
 {
-    public static async System.Threading.Tasks.Task<MainViewModel> CreateAsync()
+    public static async System.Threading.Tasks.Task<CompositionResult> CreateAsync()
     {
         ServiceCollection services = new();
 
@@ -56,8 +56,11 @@ public static class CompositionRoot
         services.AddTransient<MainViewModel>();
 
         var serviceProvider = services.BuildServiceProvider();
-        return serviceProvider.GetRequiredService<MainViewModel>();
+        var viewModel = serviceProvider.GetRequiredService<MainViewModel>();
+        return new CompositionResult(viewModel, serviceProvider);
     }
+
+    public sealed record CompositionResult(MainViewModel ViewModel, ServiceProvider Services);
 
     private static void AddSections(ServiceCollection services)
     {
