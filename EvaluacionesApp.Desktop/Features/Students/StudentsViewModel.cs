@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using DynamicData;
@@ -16,9 +17,11 @@ using EvaluacionesApp.Desktop.ViewModels;
 using EvaluacionesApp.Desktop.Persistence;
 using Zafiro.Avalonia.Misc;
 using Zafiro.UI;
+using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Students;
 
+[Section(name: "Students", icon: "mdi-account-group", sortIndex: 3, FriendlyName = "Alumnos")]
 public partial class StudentsViewModel : ReactiveObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
@@ -224,7 +227,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         course.ClassesChanges
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Id)
-            .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+            .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(courseAnchors);
@@ -254,7 +257,7 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             .AutoRefresh(s => s.Positivos)
             .AutoRefresh(s => s.Negativos)
             .AutoRefresh(s => s.Observaciones)
-            .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+            .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(classAnchors);
@@ -368,12 +371,12 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
             CourseOrder = target.CourseOrder;
 
             target.WhenAnyValue(x => x.CourseName)
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(value => Header = value)
                 .DisposeWith(anchors);
 
             target.WhenAnyValue(x => x.CourseOrder)
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(value => CourseOrder = value)
                 .DisposeWith(anchors);
 
@@ -414,7 +417,7 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
             Header = target.ClassName;
 
             target.WhenAnyValue(x => x.ClassName)
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(RxSchedulers.MainThreadScheduler)
                 .Subscribe(value => Header = value)
                 .DisposeWith(anchors);
         }
@@ -489,12 +492,12 @@ public sealed class CourseMoveTarget : ReactiveObject, IDisposable
         UpdateState();
 
         course.WhenAnyValue(x => x.Name)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
             .DisposeWith(anchors);
 
         course.WhenAnyValue(x => x.Number)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
             .DisposeWith(anchors);
     }
@@ -581,7 +584,7 @@ public sealed class ClassMoveTarget : ReactiveObject, IDisposable
         UpdateState();
 
         cls.WhenAnyValue(x => x.Name)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
             .DisposeWith(anchors);
     }

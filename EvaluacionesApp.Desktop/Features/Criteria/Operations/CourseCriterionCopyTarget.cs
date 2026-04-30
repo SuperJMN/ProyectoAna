@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using EvaluacionesApp.Desktop.Dynamic;
 using ReactiveUI;
@@ -26,17 +27,17 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
         UpdateTerms();
 
         course.WhenAnyValue(x => x.Name)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
             .DisposeWith(anchors);
 
         course.WhenAnyValue(x => x.Number)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateState())
             .DisposeWith(anchors);
 
         course.TermsChanges
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => UpdateTerms())
             .DisposeWith(anchors);
     }

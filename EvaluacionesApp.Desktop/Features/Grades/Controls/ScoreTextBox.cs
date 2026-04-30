@@ -40,7 +40,7 @@ public class ScoreTextBox : TextBox
         // Reactive commit on typing with throttle
         this.GetObservable(TextProperty)
             .Skip(1)
-            .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
+            .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => Commit());
 
         // Immediate commit on losing focus

@@ -1,6 +1,7 @@
 using System;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
@@ -21,12 +22,12 @@ public sealed class CourseCopyMenuViewModel : MenuViewModel, IDisposable
         CourseOrder = target.CourseOrder;
 
         target.WhenAnyValue(x => x.CourseName)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(value => Header = value)
             .DisposeWith(anchors);
 
         target.WhenAnyValue(x => x.CourseOrder)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(value => CourseOrder = value)
             .DisposeWith(anchors);
 

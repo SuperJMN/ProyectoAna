@@ -1,6 +1,7 @@
 ﻿using Avalonia;
 using System;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
+using Zafiro.Avalonia.Mcp.AppHost;
 
 namespace EvaluacionesApp.Desktop;
 
@@ -18,6 +19,7 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .UseReactiveUI()
-            .LogToTrace();
+            .UseReactiveUI(_ => { })
+            .LogToTrace()
+            .UseMcpDiagnostics();
 }

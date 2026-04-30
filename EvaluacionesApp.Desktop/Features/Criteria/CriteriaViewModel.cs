@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using DynamicData;
@@ -16,9 +17,11 @@ using ReactiveUI;
 using ReactiveUI.SourceGenerators;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.UI;
+using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Criteria;
 
+[Section(name: "Criteria", icon: "mdi-format-list-bulleted", sortIndex: 4, FriendlyName = "Criterios")]
 public partial class CriteriaViewModel : ReactiveObject, IDisposable
 {
     private readonly CompositeDisposable anchors = new();
@@ -79,7 +82,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
         // Rebuild when course or term changes
         this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedTerm)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(t => RebuildCriteria(t.Item1, t.Item2))
             .DisposeWith(anchors);
 
@@ -87,10 +90,10 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         this.WhenAnyValue(x => x.SelectedCourse)
             .Select(course => course?.CriteriaChanges
                 .MergeManyChangeSets(c => c.SelfAndDescendants())
-                .Throttle(TimeSpan.FromMilliseconds(100), RxApp.MainThreadScheduler)
+                .Throttle(TimeSpan.FromMilliseconds(100), RxSchedulers.MainThreadScheduler)
                 .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
             .Switch()
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(_ => RebuildCriteria(SelectedCourse, SelectedTerm))
             .DisposeWith(anchors);
 
@@ -107,7 +110,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
                 .AutoRefresh(c => c.Name)
                 .AutoRefresh(c => c.Weight)
                 .AutoRefresh(c => c.Term)
-                .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+                .Throttle(TimeSpan.FromMilliseconds(400), RxSchedulers.MainThreadScheduler)
                 .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
             .Switch()
             .InvokeCommand(ReactiveCommand.CreateFromTask(ExecuteSave))
@@ -118,7 +121,7 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         Terms = new ReadOnlyObservableCollection<int>(termsCollection);
 
         this.WhenAnyValue(x => x.SelectedCourse)
-            .ObserveOn(RxApp.MainThreadScheduler)
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
             .Subscribe(course =>
             {
                 var terms = (course?.Terms ?? (IEnumerable<int>)new[] { 1, 2, 3 }).OrderBy(x => x);

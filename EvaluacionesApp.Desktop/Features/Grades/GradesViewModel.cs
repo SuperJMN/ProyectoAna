@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading.Tasks;
@@ -15,8 +16,11 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Grades;
+
+[Section(name: "Grades", icon: "mdi-numeric-3-box-multiple", sortIndex: 0, FriendlyName = "Notas")]
 
 public partial class GradesViewModel : ReactiveObject, IDisposable
 {
@@ -50,7 +54,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
     {
         this.store = store;
-        this.scheduler = scheduler ?? RxApp.MainThreadScheduler;
+        this.scheduler = scheduler ?? RxSchedulers.MainThreadScheduler;
         var interval = autoSaveInterval ?? TimeSpan.FromSeconds(5);
 
         LeafCriteria = new ReadOnlyObservableCollection<DynamicCriterion>(leafCriteriaInternal);

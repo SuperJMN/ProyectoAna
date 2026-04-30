@@ -2,12 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:shell="using:EvaluacionesApp.Desktop.Shell"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="800"
-        Width="800" Height="600"
+        Width="1000" Height="700"
         WindowStartupLocation="CenterScreen"
         x:Class="EvaluacionesApp.Desktop.Views.MainWindow"
         Icon="/Assets/app.png"
-        Title="EvaluacionesApp.Desktop">
-    <shell:MainView />
-</Window>
+        Title="Evaluaciones" />

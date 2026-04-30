@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
@@ -12,9 +13,11 @@ using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Persistence;
 using Zafiro.UI;
+using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Classes;
 
+[Section(name: "Classes", icon: "mdi-google-classroom", sortIndex: 2, FriendlyName = "Clases")]
 public partial class ClassesViewModel : ReactiveObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
@@ -75,7 +78,7 @@ public partial class ClassesViewModel : ReactiveObject, IDisposable
         course.ClassesChanges
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Id)
-            .Throttle(TimeSpan.FromMilliseconds(400), RxApp.MainThreadScheduler)
+            .Throttle(TimeSpan.FromMilliseconds(400), RxSchedulers.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(courseAnchors);

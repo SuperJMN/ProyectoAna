@@ -7,7 +7,7 @@ using Avalonia.Data;
 using Avalonia.Markup.Xaml.Templates;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
-using Avalonia.ReactiveUI;
+using ReactiveUI.Avalonia;
 using ReactiveUI;
 using System.Reactive;
 using System.Reactive.Linq;
