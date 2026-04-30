@@ -205,8 +205,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
     void HandleSelectedCourseChanged(DynamicCourse? course)
     {
-        classAnchors?.Dispose();
-        classAnchors = null;
+        courseAnchors?.Dispose();
+        courseAnchors = null;
 
         if (course == null)
         {
@@ -214,14 +214,14 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             return;
         }
 
-        classAnchors = new CompositeDisposable();
+        courseAnchors = new CompositeDisposable();
         course.ClassesChanges
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Id)
             .Throttle(TimeSpan.FromMilliseconds(300), RxApp.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
-            .DisposeWith(classAnchors);
+            .DisposeWith(courseAnchors);
 
         SelectedClass = course.Classes.FirstOrDefault();
     }
