@@ -12,7 +12,6 @@ using ReactiveUI;
 using System.Reactive;
 using System.Reactive.Linq;
 using Zafiro.Avalonia.Controls.SlimDataGrid;
-using EvaluacionesApp.Desktop.Features.Grades.Controls;
 
 namespace EvaluacionesApp.Desktop.Features.Grades;
 

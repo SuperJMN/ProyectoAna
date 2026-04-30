@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="**/*.axaml" Exclude="Views/Grades/**/*.axaml" />
+    <AdditionalFiles Include="**/*.axaml" />
   </ItemGroup>
 
   <ItemGroup>
