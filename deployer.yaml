@@ -1,6 +1,3 @@
-# DotnetDeployer Configuration
-# Desktop app with GitHub Releases (Windows setup + Linux deb)
-
 version: 1
 
 github:
@@ -10,11 +7,36 @@ github:
   token:
     from: env
     name: GITHUB_TOKEN
-  outputDir: artifacts
   packages:
+    - project: EvaluacionesApp.Android/EvaluacionesApp.Android.csproj
+      formats:
+        - type: Apk
+          arch:
+            - arm64
+          signing:
+            keystore:
+              from: env
+              name: ANDROID_KEYSTORE_BASE64
+              encoding: base64
+            storePassword:
+              from: env
+              name: ANDROID_SIGNING_STORE_PASS
+            keyAlias: android
+            keyPassword:
+              from: env
+              name: ANDROID_SIGNING_KEY_PASS
+
     - project: EvaluacionesApp.Desktop/EvaluacionesApp.Desktop.csproj
       formats:
-        - type: exe-setup
-          arch: [x64]
-        - type: deb
-          arch: [x64]
+        - type: Deb
+          arch:
+            - x64
+        - type: ExeSetup
+          arch:
+            - x64
+
+nuget:
+  enabled: false
+
+githubPages:
+  enabled: false

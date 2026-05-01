@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+    <AndroidMinSdkVersion>23</AndroidMinSdkVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationId>com.superjmn.proyectoana</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationTitle>Evaluaciones</ApplicationTitle>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <ApplicationId>com.superjmn.proyectoana.debug</ApplicationId>
+    <ApplicationTitle>Evaluaciones (Debug)</ApplicationTitle>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode>none</TrimMode>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <EnableAssemblyILStripping>false</EnableAssemblyILStripping>
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="12.0.1" />
+    <PackageReference Include="Avalonia" Version="12.0.1" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+    <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0" />
+    <PackageReference Include="DynamicData" Version="9.4.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+    <PackageReference Include="Optris.Icons.Avalonia.MaterialDesign" Version="12.0.6" />
+    <PackageReference Include="ReactiveUI.SourceGenerators" Version="2.6.1" PrivateAssets="all" />
+    <PackageReference Include="ReactiveUI.Validation" Version="7.0.5" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Splat" Version="19.3.1" />
+    <PackageReference Include="System.Reactive" Version="6.1.0" />
+    <PackageReference Include="Zafiro.UI" Version="47.0.5" />
+    <PackageReference Include="Zafiro.Avalonia" Version="51.9.6" />
+    <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="51.9.6" />
+    <PackageReference Include="Zafiro.Avalonia.Generators" Version="51.9.6" PrivateAssets="all" />
+    <PackageReference Include="Zafiro.Avalonia.Icons.Optris" Version="51.9.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\EvaluacionesApp.Desktop\**\*.cs"
+             Exclude="..\EvaluacionesApp.Desktop\Program.cs;..\EvaluacionesApp.Desktop\bin\**;..\EvaluacionesApp.Desktop\obj\**"
+             Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaXaml Include="..\EvaluacionesApp.Desktop\**\*.axaml"
+                  Exclude="..\EvaluacionesApp.Desktop\bin\**;..\EvaluacionesApp.Desktop\obj\**"
+                  Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <AdditionalFiles Include="..\EvaluacionesApp.Desktop\**\*.axaml"
+                     Exclude="..\EvaluacionesApp.Desktop\bin\**;..\EvaluacionesApp.Desktop\obj\**"
+                     Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\EvaluacionesApp.Desktop\Assets\**"
+                      Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

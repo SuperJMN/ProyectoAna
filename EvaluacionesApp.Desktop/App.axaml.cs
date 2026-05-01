@@ -27,18 +27,18 @@ public partial class App : Application
     {
         IconControlProviderRegistry.Register(new OptrisIconControlProvider(), asDefault: true);
 
+        this.Connect(
+            () => new ShellView(),
+            _ =>
+            {
+                var result = Task.Run(CompositionRoot.CreateAsync).GetAwaiter().GetResult();
+                services = result.Services;
+                return result.Shell;
+            },
+            () => new MainWindow());
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            this.Connect(
-                () => new ShellView(),
-                _ =>
-                {
-                    var result = Task.Run(CompositionRoot.CreateAsync).GetAwaiter().GetResult();
-                    services = result.Services;
-                    return result.Shell;
-                },
-                () => new MainWindow());
-
             desktop.ShutdownRequested += OnShutdownRequested;
             desktop.Exit += OnExit;
         }
