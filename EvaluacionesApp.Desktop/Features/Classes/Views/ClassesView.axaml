@@ -7,7 +7,7 @@
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Classes"
              x:DataType="vm:ClassesViewModel">
   <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,3*">
-    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
+    <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
       <TextBlock Text="Curso:" VerticalAlignment="Center"/>
       <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
         <ComboBox.ItemTemplate>
@@ -16,8 +16,8 @@
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
-      <Button Content="Add Class" Command="{Binding AddClass}" Margin="12,0,0,0"/>
-    </StackPanel>
+      <EnhancedButton Content="Add Class" Command="{Binding AddClass}"/>
+    </FlexPanel>
     <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
       <ListBox.ItemTemplate>
         <DataTemplate>
@@ -27,10 +27,10 @@
     </ListBox>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
       <TextBlock Text="Class details" FontWeight="Bold"/>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Width="240" Text="{Binding SelectedClass.Name}"/>
-      </StackPanel>
+        <TextBox Grid.Column="1" Text="{Binding SelectedClass.Name}"/>
+      </Grid>
     </StackPanel>
   </Grid>
 </UserControl>

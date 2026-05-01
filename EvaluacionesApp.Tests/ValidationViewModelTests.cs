@@ -82,6 +82,61 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public async Task StudentsViewModel_shows_details_for_selected_student_when_requested()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        Assert.False(viewModel.AreStudentDetailsShown);
+
+        await viewModel.ShowSelectedStudentDetails.Execute();
+
+        Assert.True(viewModel.AreStudentDetailsShown);
+        Assert.NotNull(viewModel.SelectedStudent);
+    }
+
+    [Fact]
+    public async Task StudentsViewModel_hides_details_without_clearing_selection()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+        var selectedStudent = viewModel.SelectedStudent;
+
+        await viewModel.ShowSelectedStudentDetails.Execute();
+        await viewModel.ShowStudentsList.Execute();
+
+        Assert.False(viewModel.AreStudentDetailsShown);
+        Assert.Same(selectedStudent, viewModel.SelectedStudent);
+        Assert.Same(selectedStudent, Assert.Single(viewModel.StudentsSelection.SelectedItems));
+    }
+
+    [Fact]
+    public async Task StudentsViewModel_shows_details_for_new_student_after_add()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        await viewModel.AddStudent.Execute();
+
+        Assert.True(viewModel.AreStudentDetailsShown);
+        Assert.NotNull(viewModel.SelectedStudent);
+    }
+
+    [Fact]
+    public async Task StudentsViewModel_resets_compact_state_when_selected_class_changes()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        await viewModel.ShowSelectedStudentDetails.Execute();
+        viewModel.SelectedClass = viewModel.SelectedCourse!.Classes[1];
+
+        Assert.False(viewModel.AreStudentDetailsShown);
+        Assert.NotNull(viewModel.SelectedStudent);
+        Assert.Equal("student-2", viewModel.SelectedStudent!.Id);
+    }
+
+    [Fact]
     public async Task CriteriaViewModel_reports_error_when_selected_criterion_is_invalid()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
@@ -121,6 +176,47 @@ public sealed class ValidationViewModelTests
                             Students =
                             {
                                 new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithTwoClasses()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1 },
+                    Criteria =
+                    {
+                        new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1m, Term = 1 }
+                    },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A",
+                            Students =
+                            {
+                                new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
+                            }
+                        },
+                        new Class
+                        {
+                            Id = "class-b",
+                            Name = "B",
+                            Students =
+                            {
+                                new Student { Id = "student-2", FirstName = "Luis", LastName = "Perez" }
                             }
                         }
                     }

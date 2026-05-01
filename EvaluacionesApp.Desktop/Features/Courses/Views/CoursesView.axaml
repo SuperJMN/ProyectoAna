@@ -8,9 +8,9 @@
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Courses"
              x:DataType="vm:CoursesViewModel">
   <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,*">
-    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
-      <Button Content="Add Course" Command="{Binding AddCourse}"/>
-    </StackPanel>
+    <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
+      <EnhancedButton Content="Add Course" Command="{Binding AddCourse}"/>
+    </FlexPanel>
     <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
       <ListBox.ItemTemplate>
         <DataTemplate>
@@ -20,18 +20,18 @@
     </ListBox>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
       <TextBlock Text="Course details" FontWeight="Bold"/>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Width="240" Text="{Binding SelectedCourse.Name}"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBox Grid.Column="1" Text="{Binding SelectedCourse.Name}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Number:" VerticalAlignment="Center"/>
-        <NumericUpDown Width="120"
-                                Minimum="1"
-                                Maximum="1000"
-                                Increment="1"
-                                Value="{Binding SelectedCourse.Number}"/>
-      </StackPanel>
+        <NumericUpDown Grid.Column="1"
+                       Minimum="1"
+                       Maximum="1000"
+                       Increment="1"
+                       Value="{Binding SelectedCourse.Number}"/>
+      </Grid>
     </StackPanel>
   </Grid>
 </UserControl>

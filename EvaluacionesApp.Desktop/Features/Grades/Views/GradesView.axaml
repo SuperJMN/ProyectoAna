@@ -15,7 +15,7 @@
         <conv:RowCriterionToBindingConverter x:Key="RowCritToBinding" />
     </UserControl.Resources>
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8" Grid.ColumnSpan="2">
+        <FlexPanel DockPanel.Dock="Top" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center" Grid.ColumnSpan="2">
             <TextBlock Text="Curso:" VerticalAlignment="Center" />
             <ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}" Width="200">
                 <ComboBox.ItemTemplate>
@@ -34,7 +34,7 @@
             </ComboBox>
             <TextBlock Text="Trimestre:" VerticalAlignment="Center" Margin="12,0,0,0" />
             <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
-        </StackPanel>
+        </FlexPanel>
 
 
         <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
@@ -70,8 +70,8 @@
                             <TreeDataTemplate ItemsSource="{Binding Children}">
                                 <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
                                     <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                                                VerticalAlignment="Center">
+                                    <FlexPanel Grid.Column="1" Gap="8" Wrap="Wrap" AlignItems="Center"
+                                               VerticalAlignment="Center">
                                         <!-- Editor solo en hojas -->
                                         <TextBox x:CompileBindings="False" Width="64"
                                                  PlaceholderText="-"
@@ -97,7 +97,7 @@
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
-                                    </StackPanel>
+                                    </FlexPanel>
                                 </Grid>
                             </TreeDataTemplate>
                         </TreeView.ItemTemplate>

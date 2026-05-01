@@ -10,7 +10,7 @@
   <UserControl.Resources>
   </UserControl.Resources>
   <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
-    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8" Margin="8">
+    <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
       <TextBlock Text="Curso:" VerticalAlignment="Center"/>
       <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
         <ComboBox.ItemTemplate>
@@ -21,15 +21,15 @@
       </ComboBox>
       <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
       <ComboBox Width="120" ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}"/>
-      <Button Content="Add Root" Command="{Binding AddRootCriterion}" Margin="12,0,0,0"/>
-      <Button Content="Add Child" Command="{Binding AddChildCriterion}"/>
-      <Button Content="Delete" Command="{Binding DeleteCriterion}"/>
-      <Button Content="Copiar criterios" Margin="12,0,0,0">
+      <EnhancedButton Content="Add Root" Command="{Binding AddRootCriterion}"/>
+      <EnhancedButton Content="Add Child" Command="{Binding AddChildCriterion}"/>
+      <EnhancedButton Content="Delete" Command="{Binding DeleteCriterion}"/>
+      <EnhancedButton Content="Copiar criterios">
         <Button.Flyout>
           <MenuFlyout ItemsSource="{Binding CopyFeature.CopyCriteriaMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
         </Button.Flyout>
-      </Button>
-    </StackPanel>
+      </EnhancedButton>
+    </FlexPanel>
     <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Criteria}" SelectedItem="{Binding SelectedNode}">
       <TreeView.ItemTemplate>
         <TreeDataTemplate ItemsSource="{Binding Children}">
@@ -39,14 +39,14 @@
     </TreeView>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
       <TextBlock Text="Criterion details" FontWeight="Bold"/>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox x:Name="NameTextBox" Width="240" Text="{Binding SelectedNode.Criterion.Name}"/>
-      </StackPanel>
-      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBox x:Name="NameTextBox" Grid.Column="1" Text="{Binding SelectedNode.Criterion.Name}"/>
+      </Grid>
+      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Weight:" VerticalAlignment="Center"/>
-        <TextBox x:Name="WeightTextBox" Width="120" Text="{Binding SelectedNode.Criterion.Weight}"/>
-      </StackPanel>
+        <TextBox x:Name="WeightTextBox" Grid.Column="1" Text="{Binding SelectedNode.Criterion.Weight}"/>
+      </Grid>
       <TextBlock Text="No se permite borrar un criterio con subcriterios."/>
     </StackPanel>
   </Grid>

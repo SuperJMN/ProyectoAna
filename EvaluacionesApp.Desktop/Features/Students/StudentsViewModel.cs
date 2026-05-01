@@ -7,6 +7,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls.Selection;
 using DynamicData;
 using DynamicData.Binding;
 using DynamicData.Kernel;
@@ -49,6 +50,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
     [Reactive] private DynamicStudent? selectedStudent;
+    [Reactive] private bool areStudentDetailsShown;
+    [Reactive] private bool isCompactSelectionMode;
 
     public ReactiveSelection<DynamicStudent, string> StudentsSelection { get; }
 
@@ -58,6 +61,11 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     public ReactiveCommand<Unit, Unit> DeleteStudent { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<ClassMoveTarget?, Unit> MoveStudents { get; }
+    public ReactiveCommand<Unit, Unit> ShowSelectedStudentDetails { get; }
+    public ReactiveCommand<Unit, Unit> ShowStudentsList { get; }
+    public ReactiveCommand<Unit, Unit> EnterCompactSelectionMode { get; }
+    public ReactiveCommand<Unit, Unit> ExitCompactSelectionMode { get; }
+    public ReactiveCommand<DynamicStudent?, Unit> OpenStudentDetails { get; }
 
     public StudentsViewModel(IDynamicSchoolStore store, INotificationService notifications)
     {
@@ -81,6 +89,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         var hasClass = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
         var canDelete = hasSelection;
         var canMove = hasClass.CombineLatest(hasSelection, (cls, selected) => cls && selected);
+        var hasSelectedStudent = this.WhenAnyValue(x => x.SelectedStudent).Select(student => student != null);
 
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
@@ -90,6 +99,11 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los alumnos", ex.Message))
             .DisposeWith(anchors);
         MoveStudents = ReactiveCommand.CreateFromTask<ClassMoveTarget?>(DoMoveStudents, canMove);
+        ShowSelectedStudentDetails = ReactiveCommand.Create(ShowDetails, hasSelectedStudent);
+        ShowStudentsList = ReactiveCommand.Create(HideDetails);
+        EnterCompactSelectionMode = ReactiveCommand.Create(EnableCompactSelectionMode);
+        ExitCompactSelectionMode = ReactiveCommand.Create(DisableCompactSelectionMode);
+        OpenStudentDetails = ReactiveCommand.Create<DynamicStudent?>(OpenDetailsForStudent);
         moveMenuCache.Connect()
             .DisposeMany()
             .AutoRefresh(menu => ((CourseMoveMenuViewModel)menu).CourseOrder)
@@ -242,6 +256,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         classAnchors?.Dispose();
         classAnchors = null;
 
+        HideDetails();
+        DisableCompactSelectionMode();
         StudentsSelection.SelectionModel.Source = cls?.Students;
 
         if (cls == null)
@@ -283,6 +299,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
         var student = SelectedClass.AddStudent(model);
         SelectStudent(student);
+        ShowDetails();
         await ExecuteSave();
     }
 
@@ -301,6 +318,59 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 
         StudentsSelection.SelectionModel.Clear();
         StudentsSelection.SelectionModel.Select(index);
+    }
+
+    void OpenDetailsForStudent(DynamicStudent? student)
+    {
+        if (student is null || IsCompactSelectionMode)
+        {
+            return;
+        }
+
+        SelectStudent(student);
+        ShowDetails();
+    }
+
+    void ShowDetails()
+    {
+        if (SelectedStudent is null)
+        {
+            return;
+        }
+
+        NormalizeSelectionToSingleItem();
+        AreStudentDetailsShown = true;
+        IsCompactSelectionMode = false;
+    }
+
+    void HideDetails()
+    {
+        AreStudentDetailsShown = false;
+    }
+
+    void EnableCompactSelectionMode()
+    {
+        HideDetails();
+        IsCompactSelectionMode = true;
+        StudentsSelection.SelectionModel.SingleSelect = false;
+    }
+
+    void DisableCompactSelectionMode()
+    {
+        IsCompactSelectionMode = false;
+        NormalizeSelectionToSingleItem();
+        StudentsSelection.SelectionModel.SingleSelect = false;
+    }
+
+    void NormalizeSelectionToSingleItem()
+    {
+        var student = SelectedStudent ?? StudentsSelection.SelectedItems.FirstOrDefault();
+        if (student is null)
+        {
+            return;
+        }
+
+        SelectStudent(student);
     }
 
     async Task DoDeleteStudent()
