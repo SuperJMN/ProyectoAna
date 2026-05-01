@@ -46,8 +46,7 @@ public partial class DynamicCourse : ReactiveObject, IDisposable
         Criteria = criteria;
 
         termsCache.Connect()
-            .Sort(SortExpressionComparer<int>.Ascending(x => x))
-            .Bind(out ReadOnlyObservableCollection<int> terms)
+            .SortAndBind(out ReadOnlyObservableCollection<int> terms, SortExpressionComparer<int>.Ascending(x => x))
             .Subscribe()
             .DisposeWith(anchors);
         Terms = terms;

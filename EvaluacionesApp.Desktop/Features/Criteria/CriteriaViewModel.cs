@@ -15,6 +15,8 @@ using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Desktop.ViewModels;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using ReactiveUI.Validation.Extensions;
+using ReactiveUI.Validation.Helpers;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.UI;
 using Zafiro.UI.Shell.Utils;
@@ -22,7 +24,7 @@ using Zafiro.UI.Shell.Utils;
 namespace EvaluacionesApp.Desktop.Features.Criteria;
 
 [Section(name: "Criteria", icon: "mdi-format-list-bulleted", sortIndex: 4, FriendlyName = "Criterios")]
-public partial class CriteriaViewModel : ReactiveObject, IDisposable
+public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 {
     private readonly CompositeDisposable anchors = new();
     private readonly IDialog dialogService;
@@ -34,6 +36,8 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
     [Reactive] private int selectedTerm = 1;
+    private bool selectedCriterionNameValid = true;
+    private bool selectedCriterionWeightValid = true;
 
     public CriteriaViewModel(IDynamicSchoolStore store, IDialog dialogService, INotificationService notifications)
     {
@@ -74,8 +78,8 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
             {
                 var nodes = course.FilterCriteriaTree(term)
                     .Select(root => ScopedCriterionNode.Build(root, term))
-                    .Where(node => node != null);
-                foreach (var node in nodes!)
+                    .OfType<ScopedCriterionNode>();
+                foreach (var node in nodes)
                     criteriaCollection.Add(node);
             }
         }
@@ -145,7 +149,12 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
         AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
         AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
         DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, canDeleteCriterion);
-        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        this.ValidationRule(x => x.SelectedCriterionNameValid, isValid => isValid, "El nombre del criterio no puede estar vacio");
+        this.ValidationRule(x => x.SelectedCriterionWeightValid, isValid => isValid, "El peso del criterio no puede ser negativo");
+        ObserveSelectedCriterionChanges()
+            .Subscribe(UpdateSelectedCriterionValidation)
+            .DisposeWith(anchors);
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave, ValidationContext.Valid);
         Save.ThrownExceptions
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los criterios", ex.Message))
             .DisposeWith(anchors);
@@ -178,9 +187,22 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> DeleteCriterion { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
 
-    public void Dispose()
+    public bool SelectedCriterionNameValid
+    {
+        get => selectedCriterionNameValid;
+        private set => this.RaiseAndSetIfChanged(ref selectedCriterionNameValid, value);
+    }
+
+    public bool SelectedCriterionWeightValid
+    {
+        get => selectedCriterionWeightValid;
+        private set => this.RaiseAndSetIfChanged(ref selectedCriterionWeightValid, value);
+    }
+
+    public new void Dispose()
     {
         anchors.Dispose();
+        base.Dispose();
     }
 
     private async Task DoAddRootCriterion()
@@ -265,6 +287,31 @@ public partial class CriteriaViewModel : ReactiveObject, IDisposable
 
     private async Task ExecuteSave()
     {
+        UpdateSelectedCriterionValidation(SelectedNode?.Criterion);
+        if (HasErrors)
+        {
+            return;
+        }
+
         await store.SaveAsync();
     }
+
+    IObservable<DynamicCriterion?> ObserveSelectedCriterionChanges()
+    {
+        return this.WhenAnyValue(x => x.SelectedNode)
+            .Select(node => node == null
+                ? Observable.Return<DynamicCriterion?>(null)
+                : node.Criterion.Changed
+                    .Select(_ => (DynamicCriterion?)node.Criterion)
+                    .StartWith(node.Criterion))
+            .Switch();
+    }
+
+    void UpdateSelectedCriterionValidation(DynamicCriterion? criterion)
+    {
+        SelectedCriterionNameValid = criterion == null || HasText(criterion.Name);
+        SelectedCriterionWeightValid = criterion == null || criterion.Weight >= 0m;
+    }
+
+    static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
 }

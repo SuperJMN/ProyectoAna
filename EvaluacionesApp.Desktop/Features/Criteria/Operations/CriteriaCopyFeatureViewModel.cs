@@ -46,10 +46,9 @@ public sealed class CriteriaCopyFeatureViewModel : ReactiveObject, IDisposable
             .DisposeMany()
             .AutoRefresh(menu => ((CourseCopyMenuViewModel)menu).CourseOrder)
             .AutoRefresh(menu => menu.Header)
-            .Sort(SortExpressionComparer<MenuViewModel>
+            .SortAndBind(out copyCriteriaMenu, SortExpressionComparer<MenuViewModel>
                 .Ascending(menu => ((CourseCopyMenuViewModel)menu).CourseOrder)
                 .ThenByAscending(menu => menu.Header))
-            .Bind(out copyCriteriaMenu)
             .Subscribe()
             .DisposeWith(anchors);
     }

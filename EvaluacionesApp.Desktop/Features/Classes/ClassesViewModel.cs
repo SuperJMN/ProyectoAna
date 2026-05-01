@@ -9,6 +9,8 @@ using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using ReactiveUI.Validation.Extensions;
+using ReactiveUI.Validation.Helpers;
 using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Persistence;
@@ -18,7 +20,7 @@ using Zafiro.UI.Shell.Utils;
 namespace EvaluacionesApp.Desktop.Features.Classes;
 
 [Section(name: "Classes", icon: "mdi-google-classroom", sortIndex: 2, FriendlyName = "Clases")]
-public partial class ClassesViewModel : ReactiveObject, IDisposable
+public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
 
@@ -43,7 +45,8 @@ public partial class ClassesViewModel : ReactiveObject, IDisposable
         this.notifications = notifications;
         var canAdd = this.WhenAnyValue(x => x.SelectedCourse).Select(c => c != null);
         AddClass = ReactiveCommand.CreateFromTask(DoAddClass, canAdd);
-        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        this.ValidationRule(ObserveSelectedClassName(), "El nombre de la clase no puede estar vacio");
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave, ValidationContext.Valid);
         Save.ThrownExceptions
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar las clases", ex.Message))
             .DisposeWith(anchors);
@@ -94,7 +97,7 @@ public partial class ClassesViewModel : ReactiveObject, IDisposable
         }
 
         var idx = SelectedCourse.Classes.Count + 1;
-var model = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class {idx}" };
+        var model = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class {idx}" };
         var cls = SelectedCourse.AddClass(model);
         SelectedClass = cls;
         await ExecuteSave();
@@ -105,9 +108,20 @@ var model = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class 
         await store.SaveAsync();
     }
 
-    public void Dispose()
+    IObservable<bool> ObserveSelectedClassName()
+    {
+        return this.WhenAnyValue(x => x.SelectedClass)
+            .Select(cls => cls?.WhenAnyValue(x => x.Name).Select(HasText) ?? Observable.Return(true))
+            .Switch()
+            .DistinctUntilChanged();
+    }
+
+    static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
+
+    public new void Dispose()
     {
         courseAnchors?.Dispose();
         anchors.Dispose();
+        base.Dispose();
     }
 }

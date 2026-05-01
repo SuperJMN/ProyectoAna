@@ -12,6 +12,8 @@ using DynamicData.Binding;
 using DynamicData.Kernel;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using ReactiveUI.Validation.Extensions;
+using ReactiveUI.Validation.Helpers;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
 using EvaluacionesApp.Desktop.Persistence;
@@ -22,7 +24,7 @@ using Zafiro.UI.Shell.Utils;
 namespace EvaluacionesApp.Desktop.Features.Students;
 
 [Section(name: "Students", icon: "mdi-account-group", sortIndex: 3, FriendlyName = "Alumnos")]
-public partial class StudentsViewModel : ReactiveObject, IDisposable
+public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
     private static readonly ReadOnlyObservableCollection<MenuViewModel> EmptyMenuItems = new(new ObservableCollection<MenuViewModel>());
@@ -82,7 +84,8 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
 
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
-        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        this.ValidationRule(ObserveSelectedStudentName(), "El nombre del alumno no puede estar vacio");
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave, ValidationContext.Valid);
         Save.ThrownExceptions
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los alumnos", ex.Message))
             .DisposeWith(anchors);
@@ -91,10 +94,9 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
             .DisposeMany()
             .AutoRefresh(menu => ((CourseMoveMenuViewModel)menu).CourseOrder)
             .AutoRefresh(menu => menu.Header)
-            .Sort(SortExpressionComparer<MenuViewModel>
+            .SortAndBind(out moveStudentsMenu, SortExpressionComparer<MenuViewModel>
                 .Ascending(menu => ((CourseMoveMenuViewModel)menu).CourseOrder)
                 .ThenByAscending(menu => menu.Header))
-            .Bind(out moveStudentsMenu)
             .Subscribe()
             .DisposeWith(anchors);
         _ = Load();
@@ -278,9 +280,27 @@ public partial class StudentsViewModel : ReactiveObject, IDisposable
         }
 
         var idx = SelectedClass.Students.Count + 1;
-var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
-        SelectedClass.AddStudent(model);
+        var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
+        var student = SelectedClass.AddStudent(model);
+        SelectStudent(student);
         await ExecuteSave();
+    }
+
+    void SelectStudent(DynamicStudent student)
+    {
+        if (SelectedClass is null)
+        {
+            return;
+        }
+
+        var index = SelectedClass.Students.IndexOf(student);
+        if (index < 0)
+        {
+            return;
+        }
+
+        StudentsSelection.SelectionModel.Clear();
+        StudentsSelection.SelectionModel.Select(index);
     }
 
     async Task DoDeleteStudent()
@@ -428,7 +448,20 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
         }
     }
 
-    public void Dispose()
+    IObservable<bool> ObserveSelectedStudentName()
+    {
+        return this.WhenAnyValue(x => x.SelectedStudent)
+            .Select(student => student?.WhenAnyValue(
+                x => x.FirstName,
+                x => x.LastName,
+                (firstName, lastName) => HasText(firstName) || HasText(lastName)) ?? Observable.Return(true))
+            .Switch()
+            .DistinctUntilChanged();
+    }
+
+    static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
+
+    public new void Dispose()
     {
         classAnchors?.Dispose();
         courseAnchors?.Dispose();
@@ -448,6 +481,7 @@ var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
         courseMoveTargetsByCourse.Clear();
         moveMenuCache.Dispose();
         moveMenusByTarget.Clear();
+        base.Dispose();
     }
 
     void HandleCourseClassChanges(DynamicCourse course, IChangeSet<DynamicClass, string> changes)
@@ -483,9 +517,8 @@ public sealed class CourseMoveTarget : ReactiveObject, IDisposable
         classesCache.Connect()
             .OnItemRemoved(DisposeClassTarget)
             .AutoRefresh(target => target.ClassName)
-            .Sort(SortExpressionComparer<ClassMoveTarget>
+            .SortAndBind(out classes, SortExpressionComparer<ClassMoveTarget>
                 .Ascending(target => target.ClassName))
-            .Bind(out classes)
             .Subscribe()
             .DisposeWith(anchors);
 

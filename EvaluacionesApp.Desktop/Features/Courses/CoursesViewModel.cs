@@ -12,13 +12,15 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Persistence;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using ReactiveUI.Validation.Extensions;
+using ReactiveUI.Validation.Helpers;
 using Zafiro.UI;
 using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Courses;
 
 [Section(name: "Courses", icon: "mdi-school", sortIndex: 1, FriendlyName = "Cursos")]
-public partial class CoursesViewModel : ReactiveObject, IDisposable
+public partial class CoursesViewModel : ReactiveValidationObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
 
@@ -40,7 +42,8 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
         this.store = store;
         this.notifications = notifications;
         AddCourse = ReactiveCommand.CreateFromTask(DoAddCourse);
-        Save = ReactiveCommand.CreateFromTask(ExecuteSave);
+        this.ValidationRule(ObserveSelectedCourseName(), "El nombre del curso no puede estar vacio");
+        Save = ReactiveCommand.CreateFromTask(ExecuteSave, ValidationContext.Valid);
         Save.ThrownExceptions
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los cursos", ex.Message))
             .DisposeWith(anchors);
@@ -67,7 +70,7 @@ public partial class CoursesViewModel : ReactiveObject, IDisposable
     {
         var targetRoot = store.Root;
         var idx = targetRoot.Courses.Count + 1;
-var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Course {idx}" });
+        var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Course {idx}" });
         SelectedCourse = course;
         await ExecuteSave();
     }
@@ -77,8 +80,19 @@ var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Co
         await store.SaveAsync();
     }
 
-    public void Dispose()
+    IObservable<bool> ObserveSelectedCourseName()
+    {
+        return this.WhenAnyValue(x => x.SelectedCourse)
+            .Select(course => course?.WhenAnyValue(x => x.Name).Select(HasText) ?? Observable.Return(true))
+            .Switch()
+            .DistinctUntilChanged();
+    }
+
+    static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
+
+    public new void Dispose()
     {
         anchors.Dispose();
+        base.Dispose();
     }
 }

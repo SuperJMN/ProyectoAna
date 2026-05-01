@@ -26,8 +26,8 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
-            <Button Content="Add" Command="{Binding AddStudent}" Margin="12,0,0,0" />
-            <Button Content="Delete" Command="{Binding DeleteStudent}" />
+            <Button Content="Añadir" Command="{Binding AddStudent}" Margin="12,0,0,0" />
+            <Button Content="Eliminar" Command="{Binding DeleteStudent}" />
             <Button Content="Mover a clase"
                     Margin="12,0,0,0"
                     IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
@@ -48,7 +48,7 @@
         </ListBox>
         <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8" Grid.IsSharedSizeScope="True"
                     DataContext="{Binding SelectedStudent}">
-            <TextBlock Text="Student details" FontWeight="Bold" />
+            <TextBlock Text="Detalles del alumno" FontWeight="Bold" />
             <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock Text="Nombre:" VerticalAlignment="Center" />
                 <TextBox Width="160" Text="{Binding FirstName}" />
