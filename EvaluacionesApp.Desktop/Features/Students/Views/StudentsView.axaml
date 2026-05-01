@@ -2,8 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:Zafiro.Avalonia.Controls;assembly=Zafiro.Avalonia"
-             xmlns:behaviors="clr-namespace:Zafiro.Avalonia.Behaviors;assembly=Zafiro.Avalonia"
              xmlns:dynamic="clr-namespace:EvaluacionesApp.Desktop.Dynamic"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Desktop.Features.Students.StudentsView"
@@ -77,150 +75,82 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*">
-        <controls:ResponsivePresenter Grid.Row="0" Breakpoint="720">
-            <controls:ResponsivePresenter.Wide>
-                <FlexPanel Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
-                    <TextBlock Text="Curso:" VerticalAlignment="Center" />
-                    <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBlock Text="Clase:" VerticalAlignment="Center" />
-                    <ComboBox Width="180" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <EnhancedButton Content="Añadir" Command="{Binding AddStudent}" />
-                    <EnhancedButton Content="Eliminar" Command="{Binding DeleteStudent}" />
-                    <EnhancedButton Content="Mover a clase"
-                                    IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
-                        <Button.Flyout>
-                            <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
-                        </Button.Flyout>
-                    </EnhancedButton>
-                </FlexPanel>
-            </controls:ResponsivePresenter.Wide>
-            <controls:ResponsivePresenter.Narrow>
-                <StackPanel Margin="8" Spacing="8">
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Curso:" />
-                        <ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="Clase:" />
-                        <ComboBox ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" />
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-                </StackPanel>
-            </controls:ResponsivePresenter.Narrow>
-        </controls:ResponsivePresenter>
+        <FlexPanel Grid.Row="0" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
+            <TextBlock Text="Curso:" VerticalAlignment="Center" />
+            <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Clase:" VerticalAlignment="Center" />
+            <ComboBox Width="180" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <EnhancedButton Content="Añadir" Command="{Binding AddStudent}" />
+            <EnhancedButton Content="Eliminar" Command="{Binding DeleteStudent}" />
+            <EnhancedButton Content="Mover a clase"
+                            IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
+                <Button.Flyout>
+                    <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
+                </Button.Flyout>
+            </EnhancedButton>
+            <EnhancedButton Content="Seleccionar"
+                            Command="{Binding EnterCompactSelectionMode}"
+                            IsVisible="{Binding !IsCompactSelectionMode}" />
+            <EnhancedButton Content="Cancelar"
+                            Command="{Binding ExitCompactSelectionMode}"
+                            IsVisible="{Binding IsCompactSelectionMode}" />
+        </FlexPanel>
 
-        <controls:ResponsivePresenter Grid.Row="1" Breakpoint="720">
-            <controls:ResponsivePresenter.Wide>
-                <Grid ColumnDefinitions="2*,3*">
-                    <ListBox Grid.Column="0"
-                             ItemsSource="{Binding SelectedClass.Students}"
-                             SelectionMode="Multiple"
-                             Selection="{Binding StudentsSelection.SelectionModel}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding FullName}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+        <Panel Grid.Row="1">
+            <MasterDetailsView ItemsSource="{Binding SelectedClass.Students}"
+                               SelectedItem="{Binding SelectedStudent, Mode=TwoWay}"
+                               NavigationKey="{Binding SelectedClass}"
+                               CompactWidth="720"
+                               MasterPaneWidth="320"
+                               IsVisible="{Binding !IsCompactSelectionMode}">
+                <MasterDetailsView.ItemTemplate>
+                    <DataTemplate x:DataType="dynamic:DynamicStudent">
+                        <TextBlock Text="{Binding FullName}" />
+                    </DataTemplate>
+                </MasterDetailsView.ItemTemplate>
 
-                    <DockPanel Grid.Column="1" Margin="8" DataContext="{Binding SelectedStudent}">
-                        <TextBlock DockPanel.Dock="Top" Text="Detalles del alumno" FontWeight="Bold" />
-                        <ContentControl Content="{Binding}"
-                                        ContentTemplate="{StaticResource StudentDetailFieldsTemplate}" />
-                    </DockPanel>
-                </Grid>
-            </controls:ResponsivePresenter.Wide>
+                <MasterDetailsView.CompactItemTemplate>
+                    <DataTemplate x:DataType="dynamic:DynamicStudent">
+                        <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" />
+                    </DataTemplate>
+                </MasterDetailsView.CompactItemTemplate>
 
-            <controls:ResponsivePresenter.Narrow>
-                <Grid>
-                    <StackPanel Margin="8" Spacing="8" IsVisible="{Binding !AreStudentDetailsShown}">
-                        <AutoWrapGrid ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding !IsCompactSelectionMode}">
-                            <EnhancedButton Content="Añadir" Command="{Binding AddStudent}" />
-                            <EnhancedButton Content="Seleccionar" Command="{Binding EnterCompactSelectionMode}" />
-                        </AutoWrapGrid>
-
-                        <AutoWrapGrid ColumnSpacing="8" RowSpacing="8" IsVisible="{Binding IsCompactSelectionMode}">
-                            <EnhancedButton Content="Eliminar" Command="{Binding DeleteStudent}" />
-                            <EnhancedButton Content="Mover a clase"
-                                            IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
-                                <Button.Flyout>
-                                    <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
-                                </Button.Flyout>
-                            </EnhancedButton>
-                            <EnhancedButton Content="Cancelar" Command="{Binding ExitCompactSelectionMode}" />
-                        </AutoWrapGrid>
-
-                        <ItemsControl IsVisible="{Binding !IsCompactSelectionMode}"
-                                      ItemsSource="{Binding SelectedClass.Students}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="dynamic:DynamicStudent">
-                                    <EnhancedButton HorizontalAlignment="Stretch"
-                                                    Command="{Binding #StudentsViewRoot.DataContext.OpenStudentDetails}"
-                                                    CommandParameter="{Binding}"
-                                                    Content="{Binding FullName}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <ListBox IsVisible="{Binding IsCompactSelectionMode}"
-                                 ItemsSource="{Binding SelectedClass.Students}"
-                                 SelectionMode="Multiple"
-                                 Selection="{Binding StudentsSelection.SelectionModel}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding FullName}" />
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </StackPanel>
-
-                    <DockPanel Margin="8"
-                               IsVisible="{Binding #StudentsViewRoot.DataContext.AreStudentDetailsShown}"
-                               DataContext="{Binding SelectedStudent}">
-                        <FlexPanel DockPanel.Dock="Top" Wrap="Wrap" Gap="8" AlignItems="Center">
-                            <EnhancedButton Content="Volver"
-                                            Command="{Binding #StudentsViewRoot.DataContext.ShowStudentsList}" />
-                            <TextBlock VerticalAlignment="Center"
-                                       FlexPanel.Grow="1"
-                                       FlexPanel.Basis="0"
+                <MasterDetailsView.DetailsTemplate>
+                    <DataTemplate x:DataType="dynamic:DynamicStudent">
+                        <DockPanel Margin="8">
+                            <TextBlock DockPanel.Dock="Top"
                                        Text="{Binding FullName}"
                                        FontWeight="Bold" />
-                        </FlexPanel>
+                            <ContentControl Content="{Binding}"
+                                            ContentTemplate="{StaticResource StudentDetailFieldsTemplate}" />
+                        </DockPanel>
+                    </DataTemplate>
+                </MasterDetailsView.DetailsTemplate>
+            </MasterDetailsView>
 
-                        <ContentControl Content="{Binding}"
-                                        ContentTemplate="{StaticResource StudentDetailFieldsTemplate}">
-                            <Interaction.Behaviors>
-                                <behaviors:BackTriggerBehavior MarkAsHandled="True">
-                                    <InvokeCommandAction Command="{Binding #StudentsViewRoot.DataContext.ShowStudentsList}" />
-                                </behaviors:BackTriggerBehavior>
-                            </Interaction.Behaviors>
-                        </ContentControl>
-                    </DockPanel>
-                </Grid>
-            </controls:ResponsivePresenter.Narrow>
-        </controls:ResponsivePresenter>
+            <ListBox Margin="8"
+                     IsVisible="{Binding IsCompactSelectionMode}"
+                     ItemsSource="{Binding SelectedClass.Students}"
+                     SelectionMode="Multiple"
+                     Selection="{Binding StudentsSelection.SelectionModel}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="dynamic:DynamicStudent">
+                        <TextBlock Text="{Binding FullName}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Panel>
     </Grid>
 </UserControl>

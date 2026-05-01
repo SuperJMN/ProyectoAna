@@ -49,8 +49,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
-    [Reactive] private DynamicStudent? selectedStudent;
-    [Reactive] private bool areStudentDetailsShown;
+    private DynamicStudent? selectedStudent;
+    private bool syncingStudentSelection;
     [Reactive] private bool isCompactSelectionMode;
 
     public ReactiveSelection<DynamicStudent, string> StudentsSelection { get; }
@@ -61,11 +61,14 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     public ReactiveCommand<Unit, Unit> DeleteStudent { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<ClassMoveTarget?, Unit> MoveStudents { get; }
-    public ReactiveCommand<Unit, Unit> ShowSelectedStudentDetails { get; }
-    public ReactiveCommand<Unit, Unit> ShowStudentsList { get; }
     public ReactiveCommand<Unit, Unit> EnterCompactSelectionMode { get; }
     public ReactiveCommand<Unit, Unit> ExitCompactSelectionMode { get; }
-    public ReactiveCommand<DynamicStudent?, Unit> OpenStudentDetails { get; }
+
+    public DynamicStudent? SelectedStudent
+    {
+        get => selectedStudent;
+        set => SetSelectedStudent(value, true);
+    }
 
     public StudentsViewModel(IDynamicSchoolStore store, INotificationService notifications)
     {
@@ -77,11 +80,16 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             student => student.Id);
         StudentsSelection.DisposeWith(anchors);
 
-        // Observe first selected student for details panel
         StudentsSelection.SelectedItems
             .ToObservableChangeSet()
             .AutoRefresh()
-            .Subscribe(_ => SelectedStudent = StudentsSelection.SelectedItems.FirstOrDefault())
+            .Subscribe(_ =>
+            {
+                if (!syncingStudentSelection)
+                {
+                    SetSelectedStudent(StudentsSelection.SelectedItems.FirstOrDefault(), false);
+                }
+            })
             .DisposeWith(anchors);
 
         var canAdd = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
@@ -89,7 +97,6 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         var hasClass = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
         var canDelete = hasSelection;
         var canMove = hasClass.CombineLatest(hasSelection, (cls, selected) => cls && selected);
-        var hasSelectedStudent = this.WhenAnyValue(x => x.SelectedStudent).Select(student => student != null);
 
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
@@ -99,11 +106,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los alumnos", ex.Message))
             .DisposeWith(anchors);
         MoveStudents = ReactiveCommand.CreateFromTask<ClassMoveTarget?>(DoMoveStudents, canMove);
-        ShowSelectedStudentDetails = ReactiveCommand.Create(ShowDetails, hasSelectedStudent);
-        ShowStudentsList = ReactiveCommand.Create(HideDetails);
         EnterCompactSelectionMode = ReactiveCommand.Create(EnableCompactSelectionMode);
         ExitCompactSelectionMode = ReactiveCommand.Create(DisableCompactSelectionMode);
-        OpenStudentDetails = ReactiveCommand.Create<DynamicStudent?>(OpenDetailsForStudent);
         moveMenuCache.Connect()
             .DisposeMany()
             .AutoRefresh(menu => ((CourseMoveMenuViewModel)menu).CourseOrder)
@@ -256,13 +260,13 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         classAnchors?.Dispose();
         classAnchors = null;
 
-        HideDetails();
         DisableCompactSelectionMode();
         StudentsSelection.SelectionModel.Source = cls?.Students;
+        SetSelectedStudent(null, false);
+        SyncSelectionToSelectedStudent(null);
 
         if (cls == null)
         {
-            StudentsSelection.Clear.Execute().Subscribe();
             return;
         }
 
@@ -283,7 +287,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         // Select first student if available
         if (cls.Students.Count > 0)
         {
-            StudentsSelection.SelectionModel.Select(0);
+            SelectStudent(cls.Students[0]);
         }
     }
 
@@ -299,58 +303,63 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
         var student = SelectedClass.AddStudent(model);
         SelectStudent(student);
-        ShowDetails();
         await ExecuteSave();
     }
 
     void SelectStudent(DynamicStudent student)
     {
-        if (SelectedClass is null)
-        {
-            return;
-        }
-
-        var index = SelectedClass.Students.IndexOf(student);
-        if (index < 0)
-        {
-            return;
-        }
-
-        StudentsSelection.SelectionModel.Clear();
-        StudentsSelection.SelectionModel.Select(index);
+        SetSelectedStudent(student, true);
     }
 
-    void OpenDetailsForStudent(DynamicStudent? student)
+    void SetSelectedStudent(DynamicStudent? student, bool syncSelection)
     {
-        if (student is null || IsCompactSelectionMode)
+        if (student is not null && !IsStudentInSelectedClass(student))
         {
             return;
         }
 
-        SelectStudent(student);
-        ShowDetails();
-    }
-
-    void ShowDetails()
-    {
-        if (SelectedStudent is null)
+        if (!ReferenceEquals(selectedStudent, student))
         {
-            return;
+            this.RaiseAndSetIfChanged(ref selectedStudent, student, nameof(SelectedStudent));
         }
 
-        NormalizeSelectionToSingleItem();
-        AreStudentDetailsShown = true;
-        IsCompactSelectionMode = false;
+        if (syncSelection)
+        {
+            SyncSelectionToSelectedStudent(student);
+        }
     }
 
-    void HideDetails()
+    bool IsStudentInSelectedClass(DynamicStudent student)
     {
-        AreStudentDetailsShown = false;
+        return SelectedClass?.Students.Contains(student) == true;
+    }
+
+    void SyncSelectionToSelectedStudent(DynamicStudent? student)
+    {
+        syncingStudentSelection = true;
+        try
+        {
+            StudentsSelection.SelectionModel.Clear();
+
+            if (student is null || SelectedClass is null)
+            {
+                return;
+            }
+
+            var index = SelectedClass.Students.IndexOf(student);
+            if (index >= 0)
+            {
+                StudentsSelection.SelectionModel.Select(index);
+            }
+        }
+        finally
+        {
+            syncingStudentSelection = false;
+        }
     }
 
     void EnableCompactSelectionMode()
     {
-        HideDetails();
         IsCompactSelectionMode = true;
         StudentsSelection.SelectionModel.SingleSelect = false;
     }

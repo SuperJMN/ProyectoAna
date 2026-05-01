@@ -97,46 +97,7 @@ public class GradesViewModelTests
     }
 
     [Fact]
-    public async Task OpenScoreDetails_shows_details_for_selected_row()
-    {
-        var scheduler = new TestScheduler();
-        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
-        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
-
-        await viewModel.Initialization;
-        Pump(scheduler);
-
-        var row = viewModel.ScoreRows.Last();
-
-        Assert.False(viewModel.AreScoreDetailsShown);
-
-        await viewModel.OpenScoreDetails.Execute(row);
-
-        Assert.True(viewModel.AreScoreDetailsShown);
-        Assert.Same(row, viewModel.SelectedScoreRow);
-    }
-
-    [Fact]
-    public async Task ShowScoreRows_hides_details_without_clearing_selection()
-    {
-        var scheduler = new TestScheduler();
-        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
-        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
-
-        await viewModel.Initialization;
-        Pump(scheduler);
-
-        var row = viewModel.ScoreRows.First();
-
-        await viewModel.OpenScoreDetails.Execute(row);
-        await viewModel.ShowScoreRows.Execute();
-
-        Assert.False(viewModel.AreScoreDetailsShown);
-        Assert.Same(row, viewModel.SelectedScoreRow);
-    }
-
-    [Fact]
-    public async Task Changing_class_hides_score_details()
+    public async Task ScoreDetailsScopeKey_tracks_selected_class_and_term()
     {
         var scheduler = new TestScheduler();
         using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
@@ -145,12 +106,49 @@ public class GradesViewModelTests
         await viewModel.Initialization;
         Pump(scheduler);
 
-        await viewModel.OpenScoreDetails.Execute(viewModel.ScoreRows.First());
+        Assert.Equal("class-1a:1", viewModel.ScoreDetailsScopeKey);
 
         viewModel.SelectedClass = viewModel.SelectedCourse!.Classes.Last();
         Pump(scheduler);
 
-        Assert.False(viewModel.AreScoreDetailsShown);
+        Assert.Equal("class-1b:1", viewModel.ScoreDetailsScopeKey);
+
+        viewModel.SelectedTerm = 2;
+        Pump(scheduler);
+
+        Assert.Equal("class-1b:2", viewModel.ScoreDetailsScopeKey);
+    }
+
+    [Fact]
+    public async Task ScoreDetailsScopeKey_raises_change_when_class_or_term_changes()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+        var changed = new List<string>();
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is not null)
+            {
+                changed.Add(args.PropertyName);
+            }
+        };
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        changed.Clear();
+
+        viewModel.SelectedClass = viewModel.SelectedCourse!.Classes.Last();
+        Pump(scheduler);
+
+        Assert.Contains(nameof(GradesViewModel.ScoreDetailsScopeKey), changed);
+
+        changed.Clear();
+        viewModel.SelectedTerm = 2;
+        Pump(scheduler);
+
+        Assert.Contains(nameof(GradesViewModel.ScoreDetailsScopeKey), changed);
     }
 
     [Fact]

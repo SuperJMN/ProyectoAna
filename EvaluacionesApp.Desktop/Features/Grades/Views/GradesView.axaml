@@ -7,7 +7,7 @@
              x:Name="Root"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Grades"
              xmlns:conv="clr-namespace:EvaluacionesApp.Desktop.Features.Grades.Converters"
-             xmlns:behaviors="clr-namespace:Zafiro.Avalonia.Behaviors;assembly=Zafiro.Avalonia"
+             xmlns:controls="clr-namespace:Zafiro.Avalonia.Controls;assembly=Zafiro.Avalonia"
              x:DataType="vm:GradesViewModel">
     <UserControl.Resources>
         <conv:CriterionAggregateConverter x:Key="CriterionAggregate" />
@@ -19,9 +19,6 @@
             <DockPanel VerticalSpacing="10">
                 <StackPanel DockPanel.Dock="Top" Spacing="10">
                     <FlexPanel Wrap="Wrap" Gap="8" AlignItems="Center">
-                        <EnhancedButton Content="Volver"
-                                        Command="{Binding #Root.DataContext.ShowScoreRows}"
-                                        IsVisible="{Binding #Root.DataContext.AreScoreDetailsShown}" />
                         <TextBlock VerticalAlignment="Center"
                                    FlexPanel.Grow="1"
                                    FlexPanel.Basis="0"
@@ -102,64 +99,46 @@
             <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
         </FlexPanel>
 
-        <ResponsivePresenter Breakpoint="720">
-            <ResponsivePresenter.Wide>
-                <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
-                    <DataGrid ItemsSource="{Binding ScoreRows}" SelectedItem="{Binding SelectedScoreRow}">
+        <MasterDetailsView ItemsSource="{Binding ScoreRows}"
+                           SelectedItem="{Binding SelectedScoreRow, Mode=TwoWay}"
+                           NavigationKey="{Binding ScoreDetailsScopeKey}"
+                           CompactWidth="720"
+                           MasterPaneWidth="420">
+            <MasterDetailsView.WideMasterTemplate>
+                <DataTemplate DataType="controls:MasterDetailsViewContext">
+                    <DataGrid Width="{Binding MasterPaneWidth}"
+                              x:CompileBindings="False"
+                              ItemsSource="{Binding ItemsSource}"
+                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                              AutoGenerateColumns="False">
                         <DataGrid.Columns>
                             <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
                             <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
                             <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </DataTemplate>
+            </MasterDetailsView.WideMasterTemplate>
 
-                    <GridSplitter Grid.Column="1" />
+            <MasterDetailsView.CompactItemTemplate>
+                <DataTemplate x:DataType="vm:ScoreRow">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Student.FullName}" FontWeight="SemiBold" />
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <Binding Path="Total" StringFormat="Nota global: {0:F2}" />
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </DataTemplate>
+            </MasterDetailsView.CompactItemTemplate>
 
-                    <!-- Detalle de criterios del alumno seleccionado -->
-                    <ContentControl Grid.Column="2"
-                                    Margin="12,0,0,0"
-                                    Content="{Binding SelectedScoreRow}"
+            <MasterDetailsView.DetailsTemplate>
+                <DataTemplate x:DataType="vm:ScoreRow">
+                    <ContentControl Content="{Binding}"
                                     ContentTemplate="{StaticResource ScoreDetailsTemplate}" />
-                </Grid>
-            </ResponsivePresenter.Wide>
-
-            <ResponsivePresenter.Narrow>
-                <Grid Margin="8">
-                    <DockPanel IsVisible="{Binding !AreScoreDetailsShown}">
-                        <TextBlock DockPanel.Dock="Top" Text="Alumnos" FontWeight="Bold" />
-                        <ScrollViewer Margin="0,8,0,0">
-                            <ItemsControl ItemsSource="{Binding ScoreRows}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:ScoreRow">
-                                        <EnhancedButton HorizontalAlignment="Stretch"
-                                                        Command="{Binding #Root.DataContext.OpenScoreDetails}"
-                                                        CommandParameter="{Binding}">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Student.FullName}" FontWeight="SemiBold" />
-                                                <TextBlock>
-                                                    <TextBlock.Text>
-                                                        <Binding Path="Total" StringFormat="Nota global: {0:F2}" />
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </StackPanel>
-                                        </EnhancedButton>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
-
-                    <ContentControl IsVisible="{Binding AreScoreDetailsShown}"
-                                    Content="{Binding SelectedScoreRow}"
-                                    ContentTemplate="{StaticResource ScoreDetailsTemplate}">
-                        <Interaction.Behaviors>
-                            <behaviors:BackTriggerBehavior MarkAsHandled="{Binding #Root.DataContext.AreScoreDetailsShown}">
-                                <InvokeCommandAction Command="{Binding #Root.DataContext.ShowScoreRows}" />
-                            </behaviors:BackTriggerBehavior>
-                        </Interaction.Behaviors>
-                    </ContentControl>
-                </Grid>
-            </ResponsivePresenter.Narrow>
-        </ResponsivePresenter>
+                </DataTemplate>
+            </MasterDetailsView.DetailsTemplate>
+        </MasterDetailsView>
     </DockPanel>
 </UserControl>

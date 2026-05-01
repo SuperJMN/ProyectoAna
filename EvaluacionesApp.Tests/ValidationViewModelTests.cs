@@ -80,56 +80,54 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
-    public async Task StudentsViewModel_shows_details_for_selected_student_when_requested()
+    public void StudentsViewModel_setting_selected_student_updates_single_selection()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+        var student = viewModel.SelectedClass!.Students.Last();
 
-        Assert.False(viewModel.AreStudentDetailsShown);
+        viewModel.SelectedStudent = student;
 
-        await viewModel.ShowSelectedStudentDetails.Execute();
-
-        Assert.True(viewModel.AreStudentDetailsShown);
-        Assert.NotNull(viewModel.SelectedStudent);
+        Assert.Same(student, viewModel.SelectedStudent);
+        Assert.Same(student, Assert.Single(viewModel.StudentsSelection.SelectedItems));
     }
 
     [Fact]
-    public async Task StudentsViewModel_hides_details_without_clearing_selection()
+    public void StudentsViewModel_selected_student_ignores_items_from_other_classes()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
         var selectedStudent = viewModel.SelectedStudent;
+        var otherStudent = viewModel.Courses.Last().Classes.Single().Students.Single();
 
-        await viewModel.ShowSelectedStudentDetails.Execute();
-        await viewModel.ShowStudentsList.Execute();
+        viewModel.SelectedStudent = otherStudent;
 
-        Assert.False(viewModel.AreStudentDetailsShown);
         Assert.Same(selectedStudent, viewModel.SelectedStudent);
         Assert.Same(selectedStudent, Assert.Single(viewModel.StudentsSelection.SelectedItems));
     }
 
     [Fact]
-    public async Task StudentsViewModel_shows_details_for_new_student_after_add()
+    public async Task StudentsViewModel_keeps_new_student_selected_after_add()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
 
         await viewModel.AddStudent.Execute();
 
-        Assert.True(viewModel.AreStudentDetailsShown);
-        Assert.NotNull(viewModel.SelectedStudent);
+        var student = Assert.Single(viewModel.StudentsSelection.SelectedItems);
+        Assert.Same(student, viewModel.SelectedStudent);
     }
 
     [Fact]
-    public async Task StudentsViewModel_resets_compact_state_when_selected_class_changes()
+    public void StudentsViewModel_resets_selection_mode_when_selected_class_changes()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
 
-        await viewModel.ShowSelectedStudentDetails.Execute();
+        viewModel.EnterCompactSelectionMode.Execute().Subscribe();
         viewModel.SelectedClass = viewModel.SelectedCourse!.Classes[1];
 
-        Assert.False(viewModel.AreStudentDetailsShown);
+        Assert.False(viewModel.IsCompactSelectionMode);
         Assert.NotNull(viewModel.SelectedStudent);
         Assert.Equal("student-2", viewModel.SelectedStudent!.Id);
     }
