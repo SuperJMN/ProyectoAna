@@ -62,6 +62,8 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
         Reload = ReactiveCommand.CreateFromTask(DoReload);
         RebuildRows = ReactiveCommand.Create(RebuildScoreRows);
+        OpenScoreDetails = ReactiveCommand.Create<ScoreRow?>(OpenDetailsForRow);
+        ShowScoreRows = ReactiveCommand.Create(HideScoreDetails);
 
         scoreRowsCache
             .Connect()
@@ -110,6 +112,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Merge(this.WhenAnyValue(x => x.SelectedClass).Select(_ => Unit.Default))
             .Merge(this.WhenAnyValue(x => x.SelectedTerm).Select(_ => Unit.Default))
             .InvokeCommand(RebuildRows)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass, x => x.SelectedTerm)
+            .Subscribe(_ => HideScoreDetails())
             .DisposeWith(anchors);
 
         selectedCourseChanges
@@ -163,6 +169,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     public ReadOnlyObservableCollection<DynamicCriterion> LeafCriteria { get; }
 
     [Reactive] private ScoreRow? selectedScoreRow;
+    [Reactive] private bool areScoreDetailsShown;
 
     public ObservableCollection<int> Terms { get; } = new();
     [Reactive] private int selectedTerm = 1;
@@ -171,6 +178,8 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> Reload { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<Unit, Unit> RebuildRows { get; }
+    public ReactiveCommand<ScoreRow?, Unit> OpenScoreDetails { get; }
+    public ReactiveCommand<Unit, Unit> ShowScoreRows { get; }
 
     async Task Load()
     {
@@ -318,6 +327,22 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         // For now, just rebuild the current state
         RebuildScoreRows();
         await Task.CompletedTask;
+    }
+
+    void OpenDetailsForRow(ScoreRow? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        SelectedScoreRow = row;
+        AreScoreDetailsShown = true;
+    }
+
+    void HideScoreDetails()
+    {
+        AreScoreDetailsShown = false;
     }
 
     void UpdateTerms(DynamicCourse? course)

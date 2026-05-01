@@ -7,65 +7,39 @@
              x:Name="Root"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Grades"
              xmlns:conv="clr-namespace:EvaluacionesApp.Desktop.Features.Grades.Converters"
+             xmlns:behaviors="clr-namespace:Zafiro.Avalonia.Behaviors;assembly=Zafiro.Avalonia"
              x:DataType="vm:GradesViewModel">
     <UserControl.Resources>
         <conv:CriterionAggregateConverter x:Key="CriterionAggregate" />
         <conv:HasChildrenConverter x:Key="HasChildren" />
         <conv:IsLeafConverter x:Key="IsLeaf" />
         <conv:RowCriterionToBindingConverter x:Key="RowCritToBinding" />
-    </UserControl.Resources>
-    <DockPanel>
-        <FlexPanel DockPanel.Dock="Top" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center" Grid.ColumnSpan="2">
-            <TextBlock Text="Curso:" VerticalAlignment="Center" />
-            <ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}" Width="200">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Text="Clase:" VerticalAlignment="Center" Margin="12,0,0,0" />
-            <ComboBox ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}" Width="160">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Text="Trimestre:" VerticalAlignment="Center" Margin="12,0,0,0" />
-            <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
-        </FlexPanel>
 
-
-        <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
-            <DataGrid ItemsSource="{Binding ScoreRows}" SelectedItem="{Binding SelectedScoreRow}">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
-                    <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
-                    <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
-                </DataGrid.Columns>
-            </DataGrid>
-
-            <GridSplitter Grid.Column="1" />
-
-            <!-- Detalle de criterios del alumno seleccionado -->
-            <DockPanel Grid.Column="2" VerticalSpacing="10" Margin="12,0,0,0">
+        <DataTemplate x:Key="ScoreDetailsTemplate" x:DataType="vm:ScoreRow">
+            <DockPanel VerticalSpacing="10">
                 <StackPanel DockPanel.Dock="Top" Spacing="10">
-                    <TextBlock FontWeight="Bold" FontSize="16">
-                        <TextBlock.Text>
-                            <Binding ElementName="Root" Path="DataContext.SelectedScoreRow.Student.FullName"
-                                     StringFormat="Alumno: {0}" />
-                        </TextBlock.Text>
-                    </TextBlock>
+                    <FlexPanel Wrap="Wrap" Gap="8" AlignItems="Center">
+                        <EnhancedButton Content="Volver"
+                                        Command="{Binding #Root.DataContext.ShowScoreRows}"
+                                        IsVisible="{Binding #Root.DataContext.AreScoreDetailsShown}" />
+                        <TextBlock VerticalAlignment="Center"
+                                   FlexPanel.Grow="1"
+                                   FlexPanel.Basis="0"
+                                   FontWeight="Bold"
+                                   FontSize="16">
+                            <TextBlock.Text>
+                                <Binding Path="Student.FullName" StringFormat="Alumno: {0}" />
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </FlexPanel>
                     <TextBlock>
                         <TextBlock.Text>
-                            <Binding ElementName="Root" Path="DataContext.SelectedScoreRow.Total"
-                                     StringFormat="Total (ponderado): {0:F2}" />
+                            <Binding Path="Total" StringFormat="Total (ponderado): {0:F2}" />
                         </TextBlock.Text>
                     </TextBlock>
                 </StackPanel>
                 <ScrollViewer>
-                    <TreeView ItemsSource="{Binding CriteriaTree}">
+                    <TreeView ItemsSource="{Binding ElementName=Root, Path=DataContext.CriteriaTree}">
                         <TreeView.ItemTemplate>
                             <TreeDataTemplate ItemsSource="{Binding Children}">
                                 <Grid x:Name="CritGrid" ColumnDefinitions="*,Auto" Margin="4,2">
@@ -104,6 +78,88 @@
                     </TreeView>
                 </ScrollViewer>
             </DockPanel>
-        </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <DockPanel>
+        <FlexPanel DockPanel.Dock="Top" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center" Grid.ColumnSpan="2">
+            <TextBlock Text="Curso:" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}" Width="200">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Clase:" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <ComboBox ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}" Width="160">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+            <TextBlock Text="Trimestre:" VerticalAlignment="Center" Margin="12,0,0,0" />
+            <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
+        </FlexPanel>
+
+        <ResponsivePresenter Breakpoint="720">
+            <ResponsivePresenter.Wide>
+                <Grid ColumnDefinitions="2*,Auto,3*" Margin="8">
+                    <DataGrid ItemsSource="{Binding ScoreRows}" SelectedItem="{Binding SelectedScoreRow}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
+                            <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
+                            <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <GridSplitter Grid.Column="1" />
+
+                    <!-- Detalle de criterios del alumno seleccionado -->
+                    <ContentControl Grid.Column="2"
+                                    Margin="12,0,0,0"
+                                    Content="{Binding SelectedScoreRow}"
+                                    ContentTemplate="{StaticResource ScoreDetailsTemplate}" />
+                </Grid>
+            </ResponsivePresenter.Wide>
+
+            <ResponsivePresenter.Narrow>
+                <Grid Margin="8">
+                    <DockPanel IsVisible="{Binding !AreScoreDetailsShown}">
+                        <TextBlock DockPanel.Dock="Top" Text="Alumnos" FontWeight="Bold" />
+                        <ScrollViewer Margin="0,8,0,0">
+                            <ItemsControl ItemsSource="{Binding ScoreRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:ScoreRow">
+                                        <EnhancedButton HorizontalAlignment="Stretch"
+                                                        Command="{Binding #Root.DataContext.OpenScoreDetails}"
+                                                        CommandParameter="{Binding}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Student.FullName}" FontWeight="SemiBold" />
+                                                <TextBlock>
+                                                    <TextBlock.Text>
+                                                        <Binding Path="Total" StringFormat="Nota global: {0:F2}" />
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </EnhancedButton>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+
+                    <ContentControl IsVisible="{Binding AreScoreDetailsShown}"
+                                    Content="{Binding SelectedScoreRow}"
+                                    ContentTemplate="{StaticResource ScoreDetailsTemplate}">
+                        <Interaction.Behaviors>
+                            <behaviors:BackTriggerBehavior MarkAsHandled="{Binding #Root.DataContext.AreScoreDetailsShown}">
+                                <InvokeCommandAction Command="{Binding #Root.DataContext.ShowScoreRows}" />
+                            </behaviors:BackTriggerBehavior>
+                        </Interaction.Behaviors>
+                    </ContentControl>
+                </Grid>
+            </ResponsivePresenter.Narrow>
+        </ResponsivePresenter>
     </DockPanel>
 </UserControl>

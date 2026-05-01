@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
@@ -65,6 +66,63 @@ public class GradesViewModelTests
         Pump(scheduler);
 
         Assert.Contains(viewModel.ScoreRows, row => row.Student.Id == newStudentId);
+    }
+
+    [Fact]
+    public async Task OpenScoreDetails_shows_details_for_selected_row()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.Last();
+
+        Assert.False(viewModel.AreScoreDetailsShown);
+
+        await viewModel.OpenScoreDetails.Execute(row);
+
+        Assert.True(viewModel.AreScoreDetailsShown);
+        Assert.Same(row, viewModel.SelectedScoreRow);
+    }
+
+    [Fact]
+    public async Task ShowScoreRows_hides_details_without_clearing_selection()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        var row = viewModel.ScoreRows.First();
+
+        await viewModel.OpenScoreDetails.Execute(row);
+        await viewModel.ShowScoreRows.Execute();
+
+        Assert.False(viewModel.AreScoreDetailsShown);
+        Assert.Same(row, viewModel.SelectedScoreRow);
+    }
+
+    [Fact]
+    public async Task Changing_class_hides_score_details()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        await viewModel.OpenScoreDetails.Execute(viewModel.ScoreRows.First());
+
+        viewModel.SelectedClass = viewModel.SelectedCourse!.Classes.Last();
+        Pump(scheduler);
+
+        Assert.False(viewModel.AreScoreDetailsShown);
     }
 
     [Fact]
@@ -392,5 +450,22 @@ public class GradesViewModelTests
                 }
             ]
         };
+    }
+
+    private static Root CreateRootWithTwoClasses()
+    {
+        var root = CreateRoot();
+        root.Courses[0].Classes.Add(new Class
+        {
+            Id = "class-1b",
+            Name = "Class 1B",
+            Students =
+            [
+                new Student { Id = Guid.NewGuid().ToString(), FirstName = "Student", LastName = "3" }
+            ],
+            Assessments = new List<Assessment>()
+        });
+
+        return root;
     }
 }
