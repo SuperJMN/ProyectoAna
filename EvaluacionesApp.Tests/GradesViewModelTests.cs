@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using EvaluacionesApp.Desktop.Features.Criteria;
 using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
 using EvaluacionesApp.Desktop.Features.Grades.Converters;
@@ -46,6 +47,33 @@ public class GradesViewModelTests
         Pump(scheduler);
 
         Assert.Equal(viewModel.SelectedCourse?.Classes.First(), viewModel.SelectedClass);
+    }
+
+    [Fact]
+    public async Task Adding_criterion_from_criteria_view_updates_grades_reactively()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var gradesViewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+        using var criteriaViewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            scheduler,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        await gradesViewModel.Initialization;
+        Pump(scheduler);
+
+        var initialLeafCount = gradesViewModel.LeafCriteria.Count;
+
+        await criteriaViewModel.AddRootCriterion.Execute();
+        Pump(scheduler);
+
+        var newCriterion = criteriaViewModel.SelectedCourse!.Criteria.Last();
+        Assert.Equal(initialLeafCount + 1, gradesViewModel.LeafCriteria.Count);
+        Assert.Contains(gradesViewModel.LeafCriteria, criterion => criterion.Id == newCriterion.Id);
     }
 
     [Fact]

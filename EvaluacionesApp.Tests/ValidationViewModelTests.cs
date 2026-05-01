@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using CSharpFunctionalExtensions;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Features.Classes;
 using EvaluacionesApp.Desktop.Features.Courses;
@@ -11,8 +9,6 @@ using EvaluacionesApp.Desktop.Features.Criteria;
 using EvaluacionesApp.Desktop.Features.Students;
 using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
-using Zafiro.Avalonia.Dialogs;
-using Zafiro.UI;
 
 namespace EvaluacionesApp.Tests;
 
@@ -272,27 +268,5 @@ public sealed class ValidationViewModelTests
                 }
             }
         };
-    }
-
-    sealed class NullNotificationService : INotificationService
-    {
-        public Task Show(string message, Maybe<string> title)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    sealed class ConfirmingDialog : IDialog
-    {
-        public Task<bool> Show<TViewModel>(
-            Maybe<TViewModel> viewModel,
-            Maybe<IObservable<string>> title,
-            Func<Maybe<TViewModel>, ICloseable, IEnumerable<IOption>> optionsFactory,
-            Maybe<object> icon = default,
-            DialogTone tone = DialogTone.Neutral,
-            DialogSize size = DialogSize.Auto)
-        {
-            return Task.FromResult(true);
-        }
     }
 }

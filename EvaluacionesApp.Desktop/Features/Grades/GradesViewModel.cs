@@ -78,7 +78,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         Initialization = Load();
 
         var selectedCourseChanges = this.WhenAnyValue(x => x.SelectedCourse)
-            .Publish()
+            .Replay(1)
             .RefCount();
 
         selectedCourseChanges
@@ -89,8 +89,9 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
 
         var weightChanges = selectedCourseChanges
             .Select(course => course != null
-                ? course.CriteriaChanges
+                ? course.AllCriteria()
                     .AutoRefresh(c => c.Weight)
+                    .Where(changes => changes.Any(change => change.Reason == ChangeReason.Refresh))
                     .Throttle(TimeSpan.FromMilliseconds(400), this.scheduler)
                     .Select(_ => Unit.Default)
                 : Observable.Empty<Unit>())
