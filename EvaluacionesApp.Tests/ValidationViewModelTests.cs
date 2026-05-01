@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using CSharpFunctionalExtensions;
 using EvaluacionesApp.Desktop.Dynamic;
@@ -10,7 +13,6 @@ using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.UI;
-using System.Reactive.Linq;
 
 namespace EvaluacionesApp.Tests;
 
@@ -152,6 +154,25 @@ public sealed class ValidationViewModelTests
         Assert.True(viewModel.HasErrors);
     }
 
+    [Fact]
+    public async Task CriteriaViewModel_shows_root_criterion_after_add()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutCriteria());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        await viewModel.AddRootCriterion.Execute();
+
+        var criterion = Assert.Single(viewModel.SelectedCourse!.Criteria);
+        var node = Assert.Single(viewModel.Criteria);
+        Assert.Same(criterion, node.Criterion);
+    }
+
     static Root CreateRoot()
     {
         return new Root
@@ -167,6 +188,34 @@ public sealed class ValidationViewModelTests
                     {
                         new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1m, Term = 1 }
                     },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A",
+                            Students =
+                            {
+                                new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithoutCriteria()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1 },
                     Classes =
                     {
                         new Class

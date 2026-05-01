@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
@@ -32,6 +33,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
     private readonly INotificationService notifications;
     private readonly CriteriaCopyFeatureViewModel copyFeature;
     private readonly DynamicRoot root;
+    private readonly IScheduler scheduler;
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
@@ -39,11 +41,20 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
     private bool selectedCriterionNameValid = true;
     private bool selectedCriterionWeightValid = true;
 
-    public CriteriaViewModel(IDynamicSchoolStore store, IDialog dialogService, INotificationService notifications)
+    public CriteriaViewModel(
+        IDynamicSchoolStore store,
+        IDialog dialogService,
+        INotificationService notifications,
+        IScheduler? scheduler = null,
+        TimeSpan? criteriaRefreshInterval = null,
+        TimeSpan? autoSaveInterval = null)
     {
         this.store = store;
         this.dialogService = dialogService;
         this.notifications = notifications;
+        this.scheduler = scheduler ?? RxSchedulers.MainThreadScheduler;
+        var refreshInterval = criteriaRefreshInterval ?? TimeSpan.FromMilliseconds(100);
+        var saveInterval = autoSaveInterval ?? TimeSpan.FromMilliseconds(400);
         root = store.Root;
 
         // Reactive setup for courses
@@ -86,7 +97,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
         // Rebuild when course or term changes
         this.WhenAnyValue(x => x.SelectedCourse, x => x.SelectedTerm)
-            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .ObserveOn(this.scheduler)
             .Subscribe(t => RebuildCriteria(t.Item1, t.Item2))
             .DisposeWith(anchors);
 
@@ -94,10 +105,10 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         this.WhenAnyValue(x => x.SelectedCourse)
             .Select(course => course?.CriteriaChanges
                 .MergeManyChangeSets(c => c.SelfAndDescendants())
-                .Throttle(TimeSpan.FromMilliseconds(100), RxSchedulers.MainThreadScheduler)
+                .Throttle(refreshInterval, this.scheduler)
                 .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
             .Switch()
-            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .ObserveOn(this.scheduler)
             .Subscribe(_ => RebuildCriteria(SelectedCourse, SelectedTerm))
             .DisposeWith(anchors);
 
@@ -114,7 +125,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
                 .AutoRefresh(c => c.Name)
                 .AutoRefresh(c => c.Weight)
                 .AutoRefresh(c => c.Term)
-                .Throttle(TimeSpan.FromMilliseconds(400), RxSchedulers.MainThreadScheduler)
+                .Throttle(saveInterval, this.scheduler)
                 .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
             .Switch()
             .InvokeCommand(ReactiveCommand.CreateFromTask(ExecuteSave))
@@ -125,7 +136,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         Terms = new ReadOnlyObservableCollection<int>(termsCollection);
 
         this.WhenAnyValue(x => x.SelectedCourse)
-            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .ObserveOn(this.scheduler)
             .Subscribe(course =>
             {
                 var terms = (course?.Terms ?? (IEnumerable<int>)new[] { 1, 2, 3 }).OrderBy(x => x);
