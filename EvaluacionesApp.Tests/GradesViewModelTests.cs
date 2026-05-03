@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using EvaluacionesApp.Desktop.Features.Criteria;
+using EvaluacionesApp.Desktop.Features.Students;
 using EvaluacionesApp.Desktop.Persistence;
 using EvaluacionesApp.Tests.Support;
 using EvaluacionesApp.Desktop.Features.Grades.Converters;
@@ -94,6 +95,31 @@ public class GradesViewModelTests
         Pump(scheduler);
 
         Assert.Contains(viewModel.ScoreRows, row => row.Student.Id == newStudentId);
+    }
+
+    [Fact]
+    public async Task Adding_student_from_students_section_updates_grades_selected_class_rows()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        var selection = new SchoolSelectionState();
+        using var gradesViewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero, selection);
+        using var studentsViewModel = new StudentsViewModel(store, new NullNotificationService(), selection);
+
+        await gradesViewModel.Initialization;
+        Pump(scheduler);
+
+        studentsViewModel.SelectedClass = studentsViewModel.SelectedCourse!.Classes.Last();
+        var targetClass = studentsViewModel.SelectedClass!;
+
+        await studentsViewModel.AddStudent.Execute();
+        var addedStudent = studentsViewModel.SelectedStudent!;
+
+        scheduler.AdvanceBy(TimeSpan.FromMilliseconds(250).Ticks);
+        Pump(scheduler);
+
+        Assert.Same(targetClass, gradesViewModel.SelectedClass);
+        Assert.Contains(gradesViewModel.ScoreRows, row => row.Student.Id == addedStudent.Id);
     }
 
     [Fact]

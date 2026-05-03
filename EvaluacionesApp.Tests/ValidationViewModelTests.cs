@@ -167,6 +167,82 @@ public sealed class ValidationViewModelTests
         Assert.Same(criterion, node.Criterion);
     }
 
+    [Fact]
+    public async Task CriteriaViewModel_add_child_confirms_and_removes_parent_assessments_when_leaf_has_scores()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithScoredLeafCriterion());
+        var dialog = new ConfirmingDialog();
+        using var viewModel = new CriteriaViewModel(
+            store,
+            dialog,
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
+        var initialSaveCount = store.SaveCount;
+
+        await viewModel.AddChildCriterion.Execute();
+
+        var parent = Assert.Single(viewModel.SelectedCourse!.Criteria);
+        Assert.Single(parent.Children);
+        Assert.DoesNotContain(
+            viewModel.SelectedCourse.Classes.SelectMany(cls => cls.Assessments),
+            assessment => assessment.CriterionId == parent.Id);
+        Assert.Equal(1, dialog.ShowCount);
+        Assert.True(store.SaveCount > initialSaveCount);
+    }
+
+    [Fact]
+    public async Task CriteriaViewModel_add_child_cancels_when_parent_assessment_removal_is_rejected()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithScoredLeafCriterion());
+        var dialog = new ConfirmingDialog(false);
+        using var viewModel = new CriteriaViewModel(
+            store,
+            dialog,
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
+        var initialSaveCount = store.SaveCount;
+
+        await viewModel.AddChildCriterion.Execute();
+
+        var parent = Assert.Single(viewModel.SelectedCourse!.Criteria);
+        Assert.Empty(parent.Children);
+        Assert.Contains(
+            viewModel.SelectedCourse.Classes.SelectMany(cls => cls.Assessments),
+            assessment => assessment.CriterionId == parent.Id && assessment.Score.HasValue);
+        Assert.Equal(1, dialog.ShowCount);
+        Assert.Equal(initialSaveCount, store.SaveCount);
+    }
+
+    [Fact]
+    public async Task CriteriaViewModel_add_child_without_parent_scores_does_not_ask_confirmation()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        var dialog = new ConfirmingDialog();
+        using var viewModel = new CriteriaViewModel(
+            store,
+            dialog,
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
+
+        await viewModel.AddChildCriterion.Execute();
+
+        var parent = Assert.Single(viewModel.SelectedCourse!.Criteria);
+        Assert.Single(parent.Children);
+        Assert.Equal(0, dialog.ShowCount);
+    }
+
     static Root CreateRoot()
     {
         return new Root
@@ -191,6 +267,57 @@ public sealed class ValidationViewModelTests
                             Students =
                             {
                                 new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithScoredLeafCriterion()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1 },
+                    Criteria =
+                    {
+                        new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1m, Term = 1 }
+                    },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A",
+                            Students =
+                            {
+                                new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" },
+                                new Student { Id = "student-2", FirstName = "Luis", LastName = "Perez" }
+                            },
+                            Assessments =
+                            {
+                                new Assessment { StudentId = "student-1", CriterionId = "criterion-1", Score = 7m },
+                                new Assessment { StudentId = "student-2", CriterionId = "criterion-1", Score = null }
+                            }
+                        },
+                        new Class
+                        {
+                            Id = "class-b",
+                            Name = "B",
+                            Students =
+                            {
+                                new Student { Id = "student-3", FirstName = "Eva", LastName = "Lopez" }
+                            },
+                            Assessments =
+                            {
+                                new Assessment { StudentId = "student-3", CriterionId = "criterion-1", Score = 8m }
                             }
                         }
                     }

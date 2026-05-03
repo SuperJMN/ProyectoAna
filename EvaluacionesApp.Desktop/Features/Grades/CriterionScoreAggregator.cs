@@ -12,20 +12,9 @@ public static class CriterionScoreAggregator
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(row);
 
-        var selfScore = row.GetScore(node.Criterion.Id);
-        var childrenScore = AggregateChildren(node, row);
-
-        if (selfScore.HasValue && childrenScore.HasValue)
-        {
-            return selfScore.Value + childrenScore.Value;
-        }
-
-        if (selfScore.HasValue)
-        {
-            return selfScore.Value;
-        }
-
-        return childrenScore;
+        return node.Children.Count == 0
+            ? row.GetScore(node.Criterion.Id)
+            : AggregateChildren(node, row);
     }
 
     static decimal? AggregateChildren(ScopedCriterionNode node, ScoreRow row)

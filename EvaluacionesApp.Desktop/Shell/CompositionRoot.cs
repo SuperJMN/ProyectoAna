@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.ViewModels;
 using Serilog;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.Avalonia.Services;
@@ -37,6 +38,7 @@ public static class CompositionRoot
         var root = new DynamicRoot(schoolModel);
 
         services.AddSingleton(root);
+        services.AddSingleton<SchoolSelectionState>();
         services.AddSingleton<IDynamicSchoolStore>(sp =>
             new DynamicSchoolStore(sp.GetRequiredService<DynamicRoot>(), sp.GetRequiredService<Services.PersistenceService>()));
 

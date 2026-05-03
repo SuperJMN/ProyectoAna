@@ -75,7 +75,7 @@ public class CriterionScoreAggregatorTests
     }
 
     [Fact]
-    public async Task Includes_parent_local_score_when_present()
+    public async Task Ignores_parent_local_score_when_children_are_present()
     {
         var studentId = Guid.NewGuid().ToString();
         var root = new Root
@@ -133,6 +133,6 @@ public class CriterionScoreAggregatorTests
 
         var result = CriterionScoreAggregator.Compute(node, row);
 
-        Assert.Equal(2m + (4m * 0.25m + 8m * 0.75m), result);
+        Assert.Equal(4m * 0.25m + 8m * 0.75m, result);
     }
 }

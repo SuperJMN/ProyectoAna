@@ -32,6 +32,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 
     private readonly IDynamicSchoolStore store;
     private readonly INotificationService notifications;
+    private readonly SchoolSelectionState selection;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<CourseMoveTarget, string> courseMoveTargetsCache = new(target => target.CourseId);
     private readonly SourceCache<MenuViewModel, string> moveMenuCache = new(menu => menu.Key);
@@ -51,6 +52,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     [Reactive] private DynamicClass? selectedClass;
     private DynamicStudent? selectedStudent;
     private bool syncingStudentSelection;
+    private bool syncingSchoolSelection;
     [Reactive] private bool isCompactSelectionMode;
 
     public ReactiveSelection<DynamicStudent, string> StudentsSelection { get; }
@@ -70,10 +72,11 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         set => SetSelectedStudent(value, true);
     }
 
-    public StudentsViewModel(IDynamicSchoolStore store, INotificationService notifications)
+    public StudentsViewModel(IDynamicSchoolStore store, INotificationService notifications, SchoolSelectionState? selection = null)
     {
         this.store = store;
         this.notifications = notifications;
+        this.selection = selection ?? new SchoolSelectionState();
 
         StudentsSelection = new ReactiveSelection<DynamicStudent, string>(
             new Avalonia.Controls.Selection.SelectionModel<DynamicStudent> { SingleSelect = false },
@@ -134,11 +137,13 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .Subscribe(HandleSelectedClassChanged)
             .DisposeWith(anchors);
 
+        BindSchoolSelection();
+
         root.CoursesChanges
             .Subscribe(HandleCoursesChanged)
             .DisposeWith(anchors);
 
-        SelectedCourse = Courses.FirstOrDefault();
+        SelectedCourse = ResolveCourse(selection.SelectedCourse);
         await Task.CompletedTask;
     }
 
@@ -252,7 +257,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .InvokeCommand(Save)
             .DisposeWith(courseAnchors);
 
-        SelectedClass = course.Classes.FirstOrDefault();
+        SelectedClass = ResolveClass(course, selection.SelectedClass);
     }
 
     void HandleSelectedClassChanged(DynamicClass? cls)
@@ -332,6 +337,141 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     bool IsStudentInSelectedClass(DynamicStudent student)
     {
         return SelectedClass?.Students.Contains(student) == true;
+    }
+
+    void BindSchoolSelection()
+    {
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Skip(1)
+            .Subscribe(PublishSelectedCourse)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass)
+            .Skip(1)
+            .Subscribe(PublishSelectedClass)
+            .DisposeWith(anchors);
+
+        selection.WhenAnyValue(x => x.SelectedCourse)
+            .Skip(1)
+            .Subscribe(ApplySelectedCourse)
+            .DisposeWith(anchors);
+
+        selection.WhenAnyValue(x => x.SelectedClass)
+            .Skip(1)
+            .Subscribe(ApplySelectedClass)
+            .DisposeWith(anchors);
+    }
+
+    void PublishSelectedCourse(DynamicCourse? course)
+    {
+        if (syncingSchoolSelection)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            selection.SelectedCourse = course;
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void PublishSelectedClass(DynamicClass? cls)
+    {
+        if (syncingSchoolSelection)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            selection.SelectedClass = cls;
+
+            var owner = cls == null ? null : FindCourse(cls);
+            if (owner != null)
+            {
+                selection.SelectedCourse = owner;
+            }
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void ApplySelectedCourse(DynamicCourse? course)
+    {
+        var resolved = ResolveCourse(course);
+        if (ReferenceEquals(SelectedCourse, resolved))
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            SelectedCourse = resolved;
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void ApplySelectedClass(DynamicClass? cls)
+    {
+        if (cls == null)
+        {
+            return;
+        }
+
+        var owner = FindCourse(cls);
+        if (owner == null)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            if (!ReferenceEquals(SelectedCourse, owner))
+            {
+                SelectedCourse = owner;
+            }
+
+            if (!ReferenceEquals(SelectedClass, cls))
+            {
+                SelectedClass = cls;
+            }
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    DynamicCourse? ResolveCourse(DynamicCourse? candidate)
+    {
+        return candidate != null && Courses.Contains(candidate)
+            ? candidate
+            : Courses.FirstOrDefault();
+    }
+
+    DynamicClass? ResolveClass(DynamicCourse course, DynamicClass? candidate)
+    {
+        return candidate != null && course.Classes.Contains(candidate)
+            ? candidate
+            : course.Classes.FirstOrDefault();
+    }
+
+    DynamicCourse? FindCourse(DynamicClass cls)
+    {
+        return Courses.FirstOrDefault(course => course.Classes.Contains(cls));
     }
 
     void SyncSelectionToSelectedStudent(DynamicStudent? student)

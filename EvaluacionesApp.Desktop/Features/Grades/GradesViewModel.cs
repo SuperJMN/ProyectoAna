@@ -25,6 +25,7 @@ namespace EvaluacionesApp.Desktop.Features.Grades;
 public partial class GradesViewModel : ReactiveObject, IDisposable
 {
     private readonly IDynamicSchoolStore store;
+    private readonly SchoolSelectionState selection;
     private readonly IScheduler scheduler;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<ScoreRow, string> scoreRowsCache = new(row => row.Student.Id);
@@ -36,14 +37,15 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     private ReadOnlyObservableCollection<ScoreRow> scoreRows = new(new ObservableCollection<ScoreRow>());
     private Dictionary<string, decimal> weights = new();
     private DynamicRoot? root;
+    private bool syncingSchoolSelection;
 
     [Reactive]
     private IEnumerable<ScopedCriterionNode> criteriaTree = Enumerable.Empty<ScopedCriterionNode>();
 
     private readonly Zafiro.UI.INotificationService? notifications;
 
-    public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
-        : this(store, scheduler, autoSaveInterval)
+    public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null)
+        : this(store, scheduler, autoSaveInterval, selection)
     {
         this.notifications = notifications;
         Save.ThrownExceptions
@@ -51,9 +53,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .DisposeWith(anchors);
     }
 
-    public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null)
+    public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null)
     {
         this.store = store;
+        this.selection = selection ?? new SchoolSelectionState();
         this.scheduler = scheduler ?? RxSchedulers.MainThreadScheduler;
         var interval = autoSaveInterval ?? TimeSpan.FromSeconds(5);
 
@@ -80,10 +83,12 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .RefCount();
 
         selectedCourseChanges
-            .Select(course => course?.Classes.FirstOrDefault())
+            .Select(ResolveClass)
             .ObserveOn(this.scheduler)
             .BindTo(this, x => x.SelectedClass)
             .DisposeWith(anchors);
+
+        BindSchoolSelection();
 
         var weightChanges = selectedCourseChanges
             .Select(course => course != null
@@ -182,7 +187,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     {
         root = store.Root;
         Courses = root.Courses;
-        SelectedCourse = Courses.FirstOrDefault();
+        SelectedCourse = ResolveCourse(selection.SelectedCourse);
         UpdateTerms(SelectedCourse);
         await Task.CompletedTask;
     }
@@ -272,6 +277,148 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         }
 
         return contributions;
+    }
+
+    void BindSchoolSelection()
+    {
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Skip(1)
+            .Subscribe(PublishSelectedCourse)
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass)
+            .Skip(1)
+            .Subscribe(PublishSelectedClass)
+            .DisposeWith(anchors);
+
+        selection.WhenAnyValue(x => x.SelectedCourse)
+            .Skip(1)
+            .ObserveOn(scheduler)
+            .Subscribe(ApplySelectedCourse)
+            .DisposeWith(anchors);
+
+        selection.WhenAnyValue(x => x.SelectedClass)
+            .Skip(1)
+            .ObserveOn(scheduler)
+            .Subscribe(ApplySelectedClass)
+            .DisposeWith(anchors);
+    }
+
+    void PublishSelectedCourse(DynamicCourse? course)
+    {
+        if (syncingSchoolSelection)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            selection.SelectedCourse = course;
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void PublishSelectedClass(DynamicClass? cls)
+    {
+        if (syncingSchoolSelection)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            selection.SelectedClass = cls;
+
+            var owner = cls == null ? null : FindCourse(cls);
+            if (owner != null)
+            {
+                selection.SelectedCourse = owner;
+            }
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void ApplySelectedCourse(DynamicCourse? course)
+    {
+        var resolved = ResolveCourse(course);
+        if (ReferenceEquals(SelectedCourse, resolved))
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            SelectedCourse = resolved;
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    void ApplySelectedClass(DynamicClass? cls)
+    {
+        if (cls == null)
+        {
+            return;
+        }
+
+        var owner = FindCourse(cls);
+        if (owner == null)
+        {
+            return;
+        }
+
+        syncingSchoolSelection = true;
+        try
+        {
+            if (!ReferenceEquals(SelectedCourse, owner))
+            {
+                SelectedCourse = owner;
+            }
+
+            if (!ReferenceEquals(SelectedClass, cls))
+            {
+                SelectedClass = cls;
+            }
+        }
+        finally
+        {
+            syncingSchoolSelection = false;
+        }
+    }
+
+    DynamicCourse? ResolveCourse(DynamicCourse? candidate)
+    {
+        return candidate != null && Courses.Contains(candidate)
+            ? candidate
+            : Courses.FirstOrDefault();
+    }
+
+    DynamicClass? ResolveClass(DynamicCourse? course)
+    {
+        if (course == null)
+        {
+            return null;
+        }
+
+        return selection.SelectedClass != null && course.Classes.Contains(selection.SelectedClass)
+            ? selection.SelectedClass
+            : course.Classes.FirstOrDefault();
+    }
+
+    DynamicCourse? FindCourse(DynamicClass cls)
+    {
+        return Courses.FirstOrDefault(course => course.Classes.Contains(cls));
     }
 
     static void DistributeWeight(

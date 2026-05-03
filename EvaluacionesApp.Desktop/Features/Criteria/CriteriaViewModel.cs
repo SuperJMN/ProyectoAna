@@ -235,9 +235,28 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
     private async Task DoAddChildCriterion()
     {
-        if (SelectedNode?.Criterion == null) return;
+        if (SelectedCourse == null || SelectedNode?.Criterion == null) return;
 
-        var parent = SelectedNode.Criterion;
+        var selectedNode = SelectedNode;
+        var parent = selectedNode.Criterion;
+        if (selectedNode.Children.Count == 0)
+        {
+            var assessments = FindCriterionAssessments(SelectedCourse, parent);
+            var scoredCount = assessments.Count(assessment => assessment.Score.HasValue);
+            if (scoredCount > 0)
+            {
+                var confirmation = await dialogService.ShowConfirmation(
+                    "Convertir en criterio calculado",
+                    $"Este criterio tiene {scoredCount} valoración(es) directa(s). Al añadir subcriterios, esas valoraciones se eliminarán porque el criterio pasará a calcularse desde sus descendientes. ¿Deseas continuar?",
+                    "Sí, añadir",
+                    "Cancelar");
+
+                if (!confirmation.HasValue || !confirmation.Value) return;
+            }
+
+            RemoveCriterionAssessments(SelectedCourse, parent);
+        }
+
         var idx = parent.Children.Count + 1;
         var model = new Criterion
         {
@@ -249,6 +268,29 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         };
         parent.AddChild(model);
         await ExecuteSave();
+    }
+
+    static List<DynamicAssessment> FindCriterionAssessments(DynamicCourse course, DynamicCriterion criterion)
+    {
+        return course.Classes
+            .SelectMany(cls => cls.Assessments)
+            .Where(assessment => assessment.CriterionId == criterion.Id)
+            .ToList();
+    }
+
+    static void RemoveCriterionAssessments(DynamicCourse course, DynamicCriterion criterion)
+    {
+        foreach (var cls in course.Classes)
+        {
+            var toRemove = cls.Assessments
+                .Where(assessment => assessment.CriterionId == criterion.Id)
+                .ToList();
+
+            foreach (var assessment in toRemove)
+            {
+                cls.RemoveAssessment(assessment);
+            }
+        }
     }
 
     private async Task DoDeleteCriterion()
