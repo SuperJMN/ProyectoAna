@@ -46,6 +46,8 @@
                                         <!-- Editor solo en hojas -->
                                         <TextBox x:CompileBindings="False" Width="64"
                                                  PlaceholderText="-"
+                                                 TextInputOptions.ContentType="Number"
+                                                 TextInputOptions.ReturnKeyType="Done"
                                                  HorizontalAlignment="Right"
                                                  IsVisible="{Binding DataContext.Children, ElementName=CritGrid, Converter={StaticResource IsLeaf}}"
                                                  Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">

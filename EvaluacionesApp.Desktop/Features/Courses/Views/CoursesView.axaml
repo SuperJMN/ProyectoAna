@@ -22,7 +22,10 @@
       <TextBlock Text="Course details" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Grid.Column="1" Text="{Binding SelectedCourse.Name}"/>
+        <TextBox Grid.Column="1"
+                 TextInputOptions.ContentType="Normal"
+                 TextInputOptions.ReturnKeyType="Next"
+                 Text="{Binding SelectedCourse.Name}"/>
       </Grid>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Number:" VerticalAlignment="Center"/>

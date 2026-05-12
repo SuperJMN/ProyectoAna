@@ -41,11 +41,17 @@
       <TextBlock Text="Criterion details" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox x:Name="NameTextBox" Grid.Column="1" Text="{Binding SelectedNode.Criterion.Name}"/>
+        <TextBox x:Name="NameTextBox" Grid.Column="1"
+                 TextInputOptions.ContentType="Normal"
+                 TextInputOptions.ReturnKeyType="Next"
+                 Text="{Binding SelectedNode.Criterion.Name}"/>
       </Grid>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Weight:" VerticalAlignment="Center"/>
-        <TextBox x:Name="WeightTextBox" Grid.Column="1" Text="{Binding SelectedNode.Criterion.Weight}"/>
+        <TextBox x:Name="WeightTextBox" Grid.Column="1"
+                 TextInputOptions.ContentType="Number"
+                 TextInputOptions.ReturnKeyType="Done"
+                 Text="{Binding SelectedNode.Criterion.Weight}"/>
       </Grid>
       <TextBlock Text="No se permite borrar un criterio con subcriterios."/>
     </StackPanel>

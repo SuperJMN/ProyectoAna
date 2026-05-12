@@ -29,7 +29,10 @@
       <TextBlock Text="Class details" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
         <TextBlock Text="Name:" VerticalAlignment="Center"/>
-        <TextBox Grid.Column="1" Text="{Binding SelectedClass.Name}"/>
+        <TextBox Grid.Column="1"
+                 TextInputOptions.ContentType="Normal"
+                 TextInputOptions.ReturnKeyType="Done"
+                 Text="{Binding SelectedClass.Name}"/>
       </Grid>
     </StackPanel>
   </Grid>
