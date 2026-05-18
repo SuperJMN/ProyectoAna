@@ -17,6 +17,9 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
     private readonly ReadOnlyObservableCollection<TermCriterionCopyTarget> terms;
     private string courseName = string.Empty;
     private int courseOrder;
+    private DynamicCourse? excludedCourse;
+    private int excludedTerm = 1;
+    private bool hasTerms;
 
     public CourseCriterionCopyTarget(DynamicCourse course)
     {
@@ -52,6 +55,24 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<TermCriterionCopyTarget> Terms => terms;
 
+    public bool HasTerms
+    {
+        get => hasTerms;
+        private set => this.RaiseAndSetIfChanged(ref hasTerms, value);
+    }
+
+    public void SetExcludedTarget(DynamicCourse? course, int term)
+    {
+        if (ReferenceEquals(excludedCourse, course) && excludedTerm == term)
+        {
+            return;
+        }
+
+        excludedCourse = course;
+        excludedTerm = term;
+        UpdateTerms();
+    }
+
     void UpdateState()
     {
         var newName = Course.Name;
@@ -79,8 +100,20 @@ public sealed class CourseCriterionCopyTarget : ReactiveObject, IDisposable
 
         foreach (var term in termValues.Distinct().OrderBy(x => x))
         {
+            if (IsExcluded(term))
+            {
+                continue;
+            }
+
             termsInternal.Add(new TermCriterionCopyTarget(new CriterionCopyTarget(Course, term)));
         }
+
+        HasTerms = termsInternal.Count > 0;
+    }
+
+    bool IsExcluded(int term)
+    {
+        return excludedCourse?.Id == Course.Id && excludedTerm == term;
     }
 
     public void Dispose()

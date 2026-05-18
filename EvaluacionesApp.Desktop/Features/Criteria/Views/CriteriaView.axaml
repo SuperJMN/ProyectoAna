@@ -39,30 +39,29 @@
       <FlexPanel Wrap="Wrap"
                  Gap="8"
                  AlignItems="Center">
-        <EnhancedButton Content="Criterio principal"
+        <EnhancedButton Content="Añadir criterio"
                         Icon="{Icon mdi-plus-circle-outline}"
                         Classes="Primary"
                         Command="{Binding AddRootCriterion}"
-                        IsVisible="{Binding !HasNoCriteriaForSelectedTerm}"/>
+                        IsVisible="{Binding ShowAddRootCriterionAction}"/>
         <EnhancedButton Content="Subcriterio"
                         Icon="{Icon mdi-playlist-plus}"
                         Classes="Secondary"
                         Command="{Binding AddChildCriterion}"
-                        IsVisible="{Binding HasSelectedCriterion}"/>
-        <EnhancedButton Content="Eliminar"
-                        Icon="{Icon mdi-delete-outline}"
-                        Classes="Destructive"
-                        Command="{Binding DeleteCriterion}"
-                        IsEnabled="{Binding SelectedCriterionCanBeDeleted}"
-                        IsVisible="{Binding HasSelectedCriterion}"/>
+                        IsVisible="{Binding ShowAddChildCriterionAction}"/>
         <EnhancedButton Content="Copiar criterios"
                         Icon="{Icon mdi-content-copy}"
                         Classes="Secondary"
-                        IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
+                        IsVisible="{Binding ShowCopyCriteriaAction}">
           <Button.Flyout>
             <MenuFlyout ItemsSource="{Binding CopyFeature.CopyCriteriaMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
           </Button.Flyout>
         </EnhancedButton>
+        <EnhancedButton Content="Eliminar"
+                        Icon="{Icon mdi-delete-outline}"
+                        Classes="Destructive"
+                        Command="{Binding DeleteCriterion}"
+                        IsVisible="{Binding ShowDeleteCriterionAction}"/>
       </FlexPanel>
 
       <BootstrapGridPanel MaxColumns="12"
@@ -97,7 +96,8 @@
               <EnhancedButton Content="Crear criterios"
                               Icon="{Icon mdi-playlist-plus}"
                               Classes="Primary"
-                              Command="{Binding CreateCriteria}"/>
+                              Command="{Binding CreateCriteria}"
+                              IsVisible="{Binding ShowCreateCriteriaAction}"/>
             </FlexPanel>
           </Panel>
         </Card>

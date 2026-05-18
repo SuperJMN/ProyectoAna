@@ -104,28 +104,32 @@
             <EnhancedButton Content="Añadir alumno"
                             Icon="{Icon mdi-plus-circle-outline}"
                             Classes="Primary"
-                            Command="{Binding AddStudent}" />
-            <EnhancedButton Content="Eliminar"
-                            Icon="{Icon mdi-delete-outline}"
-                            Classes="Destructive"
-                            Command="{Binding DeleteStudent}"
-                            IsVisible="{Binding HasStudentsInSelectedClass}" />
+                            Command="{Binding AddStudent}"
+                            IsVisible="{Binding ShowToolbarAddStudentAction}" />
+            <EnhancedButton Content="Seleccionar"
+                            Icon="{Icon mdi-checkbox-multiple-marked-outline}"
+                            Classes="Secondary"
+                            Command="{Binding EnterCompactSelectionMode}"
+                            IsVisible="{Binding ShowEnterStudentSelectionAction}" />
+            <EnhancedButton Content="Cancelar"
+                            Icon="{Icon mdi-close-circle-outline}"
+                            Classes="Secondary"
+                            Command="{Binding ExitCompactSelectionMode}"
+                            IsVisible="{Binding IsCompactSelectionMode}" />
             <EnhancedButton Content="Mover a clase"
                             Icon="{Icon mdi-arrow-right-bold-outline}"
-                            IsEnabled="{Binding StudentsSelection.SelectedItems.Count}"
-                            IsVisible="{Binding HasStudentsInSelectedClass}">
+                            Classes="Secondary"
+                            IsEnabled="{Binding HasSelectedStudents}"
+                            IsVisible="{Binding ShowMoveStudentsAction}">
                 <Button.Flyout>
                     <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
                 </Button.Flyout>
             </EnhancedButton>
-            <EnhancedButton Content="Seleccionar"
-                            Icon="{Icon mdi-checkbox-multiple-marked-outline}"
-                            Command="{Binding EnterCompactSelectionMode}"
-                            IsVisible="{Binding ShowStudentsMasterDetails}" />
-            <EnhancedButton Content="Cancelar"
-                            Icon="{Icon mdi-close-circle-outline}"
-                            Command="{Binding ExitCompactSelectionMode}"
-                            IsVisible="{Binding IsCompactSelectionMode}" />
+            <EnhancedButton Content="Eliminar"
+                            Icon="{Icon mdi-delete-outline}"
+                            Classes="Destructive"
+                            Command="{Binding DeleteStudent}"
+                            IsVisible="{Binding ShowDeleteStudentAction}" />
         </FlexPanel>
 
         <Panel Grid.Row="1">

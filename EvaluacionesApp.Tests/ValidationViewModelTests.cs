@@ -147,6 +147,55 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public void StudentsViewModel_exposes_action_hierarchy_for_selected_students()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        Assert.True(viewModel.HasSelectedStudents);
+        Assert.True(viewModel.HasMoveTargets);
+        Assert.True(viewModel.ShowToolbarAddStudentAction);
+        Assert.True(viewModel.ShowEnterStudentSelectionAction);
+        Assert.True(viewModel.ShowMoveStudentsAction);
+        Assert.True(viewModel.ShowDeleteStudentAction);
+
+        viewModel.SelectedStudent = null;
+
+        Assert.False(viewModel.HasSelectedStudents);
+        Assert.True(viewModel.ShowEnterStudentSelectionAction);
+        Assert.False(viewModel.ShowMoveStudentsAction);
+        Assert.False(viewModel.ShowDeleteStudentAction);
+    }
+
+    [Fact]
+    public void StudentsViewModel_move_menu_excludes_the_current_class()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        var initialMenu = Assert.Single(viewModel.MoveStudentsMenu);
+        Assert.Equal(["B"], initialMenu.Children.Select(item => item.Header));
+
+        viewModel.SelectedClass = viewModel.SelectedCourse!.Classes.Single(cls => cls.Id == "class-b");
+
+        var updatedMenu = Assert.Single(viewModel.MoveStudentsMenu);
+        Assert.Equal(["A"], updatedMenu.Children.Select(item => item.Header));
+    }
+
+    [Fact]
+    public void StudentsViewModel_hides_move_action_when_there_is_no_target_class()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        Assert.False(viewModel.HasMoveTargets);
+        Assert.True(viewModel.HasSelectedStudents);
+        Assert.False(viewModel.ShowMoveStudentsAction);
+        Assert.True(viewModel.ShowDeleteStudentAction);
+        Assert.Empty(viewModel.MoveStudentsMenu);
+    }
+
+    [Fact]
     public async Task StudentsViewModel_keeps_new_student_selected_after_add()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
@@ -185,15 +234,23 @@ public sealed class ValidationViewModelTests
         Assert.True(viewModel.HasStudentsEmptyState);
         Assert.False(viewModel.HasStudentsInSelectedClass);
         Assert.True(viewModel.CanAddStudentsToSelectedClass);
+        Assert.False(viewModel.ShowToolbarAddStudentAction);
         Assert.False(viewModel.ShowStudentsMasterDetails);
         Assert.False(viewModel.ShowCompactStudentsSelection);
+        Assert.False(viewModel.ShowEnterStudentSelectionAction);
+        Assert.False(viewModel.ShowMoveStudentsAction);
+        Assert.False(viewModel.ShowDeleteStudentAction);
         Assert.Equal("La clase no tiene alumnos", viewModel.StudentsEmptyStateTitle);
 
         await viewModel.AddStudent.Execute();
 
         Assert.False(viewModel.HasStudentsEmptyState);
         Assert.True(viewModel.HasStudentsInSelectedClass);
+        Assert.True(viewModel.ShowToolbarAddStudentAction);
         Assert.True(viewModel.ShowStudentsMasterDetails);
+        Assert.True(viewModel.ShowEnterStudentSelectionAction);
+        Assert.False(viewModel.ShowMoveStudentsAction);
+        Assert.True(viewModel.ShowDeleteStudentAction);
         Assert.NotNull(viewModel.SelectedStudent);
     }
 
@@ -252,9 +309,73 @@ public sealed class ValidationViewModelTests
             TimeSpan.Zero);
 
         Assert.True(viewModel.HasNoCriteriaForSelectedTerm);
+        Assert.True(viewModel.ShowCreateCriteriaAction);
+        Assert.False(viewModel.ShowAddRootCriterionAction);
+        Assert.False(viewModel.ShowCopyCriteriaAction);
         Assert.False(viewModel.HasSelectedCriterion);
+        Assert.False(viewModel.ShowAddChildCriterionAction);
         Assert.False(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.False(viewModel.ShowDeleteCriterionAction);
         Assert.False(viewModel.SelectedCriterionHasChildren);
+    }
+
+    [Fact]
+    public void CriteriaViewModel_hides_copy_action_when_only_target_is_current_term()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        Assert.False(viewModel.HasCopyCriteriaTargets);
+        Assert.False(viewModel.ShowCopyCriteriaAction);
+        Assert.Empty(viewModel.CopyFeature.CopyCriteriaMenu);
+    }
+
+    [Fact]
+    public void CriteriaViewModel_copy_menu_excludes_only_the_current_course_term()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithCopyTargets());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        var menusByHeader = viewModel.CopyFeature.CopyCriteriaMenu.ToDictionary(menu => menu.Header);
+
+        Assert.True(viewModel.HasCopyCriteriaTargets);
+        Assert.True(viewModel.ShowCopyCriteriaAction);
+        Assert.Equal(["1 ESO", "2 ESO"], viewModel.CopyFeature.CopyCriteriaMenu.Select(menu => menu.Header));
+        Assert.Equal(["Trimestre 2"], menusByHeader["1 ESO"].Children.Select(item => item.Header));
+        Assert.Equal(["Trimestre 1"], menusByHeader["2 ESO"].Children.Select(item => item.Header));
+    }
+
+    [Fact]
+    public async Task CriteriaViewModel_copy_to_current_course_term_does_not_mutate_or_save()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoTerms());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+        var course = viewModel.SelectedCourse!;
+        var initialCriterionIds = course.Criteria.Select(criterion => criterion.Id).ToArray();
+        var initialSaveCount = store.SaveCount;
+
+        await viewModel.CopyFeature.CopyCriteria.Execute(new CriterionCopyTarget(course, viewModel.SelectedTerm));
+
+        Assert.Equal(initialSaveCount, store.SaveCount);
+        Assert.Equal(initialCriterionIds, course.Criteria.Select(criterion => criterion.Id));
     }
 
     [Fact]
@@ -274,9 +395,34 @@ public sealed class ValidationViewModelTests
         await viewModel.AddChildCriterion.Execute();
 
         Assert.True(viewModel.HasSelectedCriterion);
+        Assert.True(viewModel.ShowAddChildCriterionAction);
         Assert.True(viewModel.SelectedCriterionHasChildren);
         Assert.False(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.False(viewModel.ShowDeleteCriterionAction);
         Assert.False(await viewModel.DeleteCriterion.CanExecute.FirstAsync());
+    }
+
+    [Fact]
+    public void CriteriaViewModel_exposes_action_hierarchy_for_selected_leaf_criterion()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoTerms());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
+
+        Assert.False(viewModel.HasNoCriteriaForSelectedTerm);
+        Assert.False(viewModel.ShowCreateCriteriaAction);
+        Assert.True(viewModel.ShowAddRootCriterionAction);
+        Assert.True(viewModel.ShowCopyCriteriaAction);
+        Assert.True(viewModel.ShowAddChildCriterionAction);
+        Assert.True(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.True(viewModel.ShowDeleteCriterionAction);
     }
 
     [Fact]
@@ -437,6 +583,59 @@ public sealed class ValidationViewModelTests
                 }
             }
         };
+    }
+
+    static Root CreateRootWithTwoTerms()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1, 2 },
+                    Criteria =
+                    {
+                        new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1m, Term = 1 }
+                    },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A",
+                            Students =
+                            {
+                                new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithCopyTargets()
+    {
+        var root = CreateRootWithTwoTerms();
+        root.Courses.Add(new Course
+        {
+            Id = "course-2",
+            Name = "2 ESO",
+            Terms = { 1 },
+            Classes =
+            {
+                new Class
+                {
+                    Id = "class-c",
+                    Name = "C"
+                }
+            }
+        });
+
+        return root;
     }
 
     static Root CreateRootWithoutCriteria()

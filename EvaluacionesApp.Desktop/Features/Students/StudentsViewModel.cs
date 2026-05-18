@@ -39,6 +39,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     private readonly Dictionary<DynamicCourse, IDisposable> courseSubscriptions = new();
     private readonly Dictionary<DynamicCourse, CourseMoveTarget> courseMoveTargetsByCourse = new();
     private readonly Dictionary<CourseMoveTarget, CourseMoveMenuViewModel> moveMenusByTarget = new();
+    private readonly Dictionary<CourseMoveTarget, IDisposable> targetVisibilitySubscriptions = new();
     private CompositeDisposable? courseAnchors;
     private CompositeDisposable? classAnchors;
     private DynamicRoot? root;
@@ -55,13 +56,25 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     [Reactive(SetModifier = AccessModifier.Private)]
     private bool hasStudentsInSelectedClass;
     [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasSelectedStudents;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasMoveTargets;
+    [Reactive(SetModifier = AccessModifier.Private)]
     private bool hasStudentsEmptyState;
     [Reactive(SetModifier = AccessModifier.Private)]
     private bool canAddStudentsToSelectedClass;
     [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showToolbarAddStudentAction;
+    [Reactive(SetModifier = AccessModifier.Private)]
     private bool showStudentsMasterDetails;
     [Reactive(SetModifier = AccessModifier.Private)]
     private bool showCompactStudentsSelection;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showEnterStudentSelectionAction;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showMoveStudentsAction;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showDeleteStudentAction;
     [Reactive(SetModifier = AccessModifier.Private)]
     private string studentsEmptyStateTitle = string.Empty;
     [Reactive(SetModifier = AccessModifier.Private)]
@@ -108,14 +121,19 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
                 {
                     SetSelectedStudent(StudentsSelection.SelectedItems.FirstOrDefault(), false);
                 }
+
+                UpdateStudentsState();
             })
             .DisposeWith(anchors);
 
         var canAdd = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
-        var hasSelection = this.WhenAnyValue(x => x.StudentsSelection.SelectedItems.Count).Select(count => count > 0);
+        var hasSelection = this.WhenAnyValue(x => x.HasSelectedStudents);
         var hasClass = this.WhenAnyValue(x => x.SelectedClass).Select(c => c != null);
         var canDelete = hasSelection;
-        var canMove = hasClass.CombineLatest(hasSelection, (cls, selected) => cls && selected);
+        var canMove = hasClass.CombineLatest(
+            hasSelection,
+            this.WhenAnyValue(x => x.HasMoveTargets),
+            (cls, selected, hasTargets) => cls && selected && hasTargets);
 
         AddStudent = ReactiveCommand.CreateFromTask(DoAddStudent, canAdd);
         DeleteStudent = ReactiveCommand.CreateFromTask(DoDeleteStudent, canDelete);
@@ -184,6 +202,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
                     break;
             }
         }
+
+        UpdateStudentsState();
     }
 
     void RegisterCourse(DynamicCourse course)
@@ -222,11 +242,12 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
 
         var target = new CourseMoveTarget(course);
+        target.SetExcludedClass(SelectedClass);
         courseMoveTargetsByCourse[course] = target;
         courseMoveTargetsCache.AddOrUpdate(target);
-        var menu = new CourseMoveMenuViewModel(target, MoveStudents);
-        moveMenusByTarget[target] = menu;
-        moveMenuCache.AddOrUpdate(menu);
+        targetVisibilitySubscriptions[target] = target.WhenAnyValue(x => x.HasClasses)
+            .Subscribe(_ => RefreshCourseMoveMenu(target));
+        RefreshCourseMoveMenu(target);
         return target;
     }
 
@@ -238,6 +259,11 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
 
         RemoveCourseMenu(target);
+        if (targetVisibilitySubscriptions.Remove(target, out var subscription))
+        {
+            subscription.Dispose();
+        }
+
         courseMoveTargetsCache.RemoveKey(course.Id);
         target.Dispose();
     }
@@ -250,6 +276,41 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
 
         moveMenuCache.RemoveKey(menu.Key);
+    }
+
+    void RegisterCourseMenu(CourseMoveTarget target)
+    {
+        if (!target.HasClasses || moveMenusByTarget.ContainsKey(target))
+        {
+            return;
+        }
+
+        var menu = new CourseMoveMenuViewModel(target, MoveStudents);
+        moveMenusByTarget[target] = menu;
+        moveMenuCache.AddOrUpdate(menu);
+    }
+
+    void RefreshCourseMoveMenu(CourseMoveTarget target)
+    {
+        if (target.HasClasses)
+        {
+            RegisterCourseMenu(target);
+        }
+        else
+        {
+            RemoveCourseMenu(target);
+        }
+
+        UpdateStudentsState();
+    }
+
+    void RefreshMoveTargets()
+    {
+        foreach (var target in courseMoveTargetsCache.Items.ToList())
+        {
+            target.SetExcludedClass(SelectedClass);
+            RefreshCourseMoveMenu(target);
+        }
     }
 
     void HandleSelectedCourseChanged(DynamicCourse? course)
@@ -281,6 +342,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         classAnchors = null;
 
         DisableCompactSelectionMode();
+        RefreshMoveTargets();
         RefreshStudentsSelectionSource();
         SetSelectedStudent(null, false);
         SyncSelectionToSelectedStudent(null);
@@ -352,6 +414,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         {
             SyncSelectionToSelectedStudent(student);
         }
+
+        UpdateStudentsState();
     }
 
     bool IsStudentInSelectedClass(DynamicStudent student)
@@ -548,12 +612,22 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     void UpdateStudentsState()
     {
         var hasStudents = CompactSelectionStudents.Count > 0;
+        var hasSelectedStudents = StudentsSelection.SelectedItems.Count > 0;
+        var hasMoveTargets = SelectedClass != null
+            && courseMoveTargetsByCourse.Values.Any(target => target.HasClasses);
 
         HasStudentsInSelectedClass = hasStudents;
+        HasSelectedStudents = hasSelectedStudents;
+        HasMoveTargets = hasMoveTargets;
         CanAddStudentsToSelectedClass = SelectedClass != null;
+        var hasEmptyState = SelectedClass == null || !hasStudents;
+        ShowToolbarAddStudentAction = SelectedClass != null && !hasEmptyState;
         ShowStudentsMasterDetails = hasStudents && !IsCompactSelectionMode;
         ShowCompactStudentsSelection = hasStudents && IsCompactSelectionMode;
-        HasStudentsEmptyState = SelectedClass == null || !hasStudents;
+        ShowEnterStudentSelectionAction = hasStudents && !IsCompactSelectionMode;
+        ShowMoveStudentsAction = hasSelectedStudents && hasMoveTargets;
+        ShowDeleteStudentAction = hasSelectedStudents;
+        HasStudentsEmptyState = hasEmptyState;
 
         (StudentsEmptyStateTitle, StudentsEmptyStateMessage) = (SelectedCourse, SelectedClass, hasStudents) switch
         {
@@ -761,6 +835,11 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         courseMoveTargetsByCourse.Clear();
         moveMenuCache.Dispose();
         moveMenusByTarget.Clear();
+        foreach (var subscription in targetVisibilitySubscriptions.Values)
+        {
+            subscription.Dispose();
+        }
+        targetVisibilitySubscriptions.Clear();
         base.Dispose();
     }
 
@@ -779,6 +858,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
                     break;
             }
         }
+
+        UpdateStudentsState();
     }
 }
 
@@ -789,6 +870,8 @@ public sealed class CourseMoveTarget : ReactiveObject, IDisposable
     private readonly ReadOnlyObservableCollection<ClassMoveTarget> classes;
     private string courseName = string.Empty;
     private int courseOrder;
+    private DynamicClass? excludedClass;
+    private bool hasClasses;
 
     public CourseMoveTarget(DynamicCourse course)
     {
@@ -825,10 +908,33 @@ public sealed class CourseMoveTarget : ReactiveObject, IDisposable
 
     public ReadOnlyObservableCollection<ClassMoveTarget> Classes => classes;
 
-    public bool IsEmpty => classes.Count == 0;
+    public bool HasClasses
+    {
+        get => hasClasses;
+        private set => this.RaiseAndSetIfChanged(ref hasClasses, value);
+    }
+
+    public bool IsEmpty => !HasClasses;
+
+    public void SetExcludedClass(DynamicClass? cls)
+    {
+        if (ReferenceEquals(excludedClass, cls))
+        {
+            return;
+        }
+
+        excludedClass = cls;
+        RefreshClasses();
+    }
 
     public void AddOrUpdateClass(DynamicClass cls)
     {
+        if (ReferenceEquals(cls, excludedClass))
+        {
+            RemoveClass(cls);
+            return;
+        }
+
         var key = ClassMoveTarget.BuildKey(Course, cls);
         var existing = classesCache.Lookup(key);
         if (existing.HasValue)
@@ -843,16 +949,45 @@ public sealed class CourseMoveTarget : ReactiveObject, IDisposable
         }
 
         classesCache.AddOrUpdate(new ClassMoveTarget(Course, cls));
+        RefreshHasClasses();
     }
 
     public void RemoveClass(DynamicClass cls)
     {
         classesCache.RemoveKey(ClassMoveTarget.BuildKey(Course, cls));
+        RefreshHasClasses();
     }
 
     void DisposeClassTarget(ClassMoveTarget target)
     {
         target.Dispose();
+    }
+
+    void RefreshClasses()
+    {
+        var visibleClasses = Course.Classes
+            .Where(cls => !ReferenceEquals(cls, excludedClass))
+            .ToList();
+        var visibleKeys = visibleClasses
+            .Select(cls => ClassMoveTarget.BuildKey(Course, cls))
+            .ToHashSet();
+
+        foreach (var target in classesCache.Items.Where(target => !visibleKeys.Contains(target.Key)).ToList())
+        {
+            classesCache.RemoveKey(target.Key);
+        }
+
+        foreach (var cls in visibleClasses)
+        {
+            AddOrUpdateClass(cls);
+        }
+
+        RefreshHasClasses();
+    }
+
+    void RefreshHasClasses()
+    {
+        HasClasses = classesCache.Items.Any();
     }
 
     void UpdateState()

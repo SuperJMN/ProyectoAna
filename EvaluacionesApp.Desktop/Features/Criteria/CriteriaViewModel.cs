@@ -103,7 +103,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
                 SelectedNode = null;
             }
 
-            this.RaisePropertyChanged(nameof(HasNoCriteriaForSelectedTerm));
+            RaiseCriteriaActionStateChanged();
             RaiseSelectedCriterionStateChanged();
         }
 
@@ -210,9 +210,17 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         var criteriaObservable = this.WhenAnyValue(x => x.Criteria)
             .Select(c => (IReadOnlyList<ScopedCriterionNode>)c);
         var selectedCourseObservable = this.WhenAnyValue(x => x.SelectedCourse);
+        var selectedTermObservable = this.WhenAnyValue(x => x.SelectedTerm);
 
-        copyFeature = new CriteriaCopyFeatureViewModel(store, criteriaObservable, selectedCourseObservable);
+        copyFeature = new CriteriaCopyFeatureViewModel(store, criteriaObservable, selectedCourseObservable, selectedTermObservable);
         copyFeature.DisposeWith(anchors);
+        copyFeature.WhenAnyValue(x => x.HasCopyCriteriaTargets)
+            .Subscribe(_ =>
+            {
+                this.RaisePropertyChanged(nameof(HasCopyCriteriaTargets));
+                RaiseCriteriaActionStateChanged();
+            })
+            .DisposeWith(anchors);
 
         // Register existing courses
         foreach (var course in root.Courses)
@@ -232,11 +240,23 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
     public bool HasNoCriteriaForSelectedTerm => SelectedCourse != null && Criteria.Count == 0;
 
+    public bool ShowCreateCriteriaAction => SelectedCourse != null && HasNoCriteriaForSelectedTerm;
+
+    public bool ShowAddRootCriterionAction => SelectedCourse != null && !HasNoCriteriaForSelectedTerm;
+
+    public bool HasCopyCriteriaTargets => copyFeature.HasCopyCriteriaTargets;
+
+    public bool ShowCopyCriteriaAction => SelectedCourse != null && !HasNoCriteriaForSelectedTerm && HasCopyCriteriaTargets;
+
     public bool HasSelectedCriterion => SelectedNode?.Criterion != null;
+
+    public bool ShowAddChildCriterionAction => HasSelectedCriterion;
 
     public bool SelectedCriterionHasChildren => SelectedNode?.Criterion.Children.Count > 0;
 
     public bool SelectedCriterionCanBeDeleted => SelectedNode?.Criterion.Children.Count == 0;
+
+    public bool ShowDeleteCriterionAction => SelectedCriterionCanBeDeleted;
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
@@ -449,8 +469,19 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
     void RaiseSelectedCriterionStateChanged()
     {
         this.RaisePropertyChanged(nameof(HasSelectedCriterion));
+        this.RaisePropertyChanged(nameof(ShowAddChildCriterionAction));
         this.RaisePropertyChanged(nameof(SelectedCriterionHasChildren));
         this.RaisePropertyChanged(nameof(SelectedCriterionCanBeDeleted));
+        this.RaisePropertyChanged(nameof(ShowDeleteCriterionAction));
+    }
+
+    void RaiseCriteriaActionStateChanged()
+    {
+        this.RaisePropertyChanged(nameof(HasNoCriteriaForSelectedTerm));
+        this.RaisePropertyChanged(nameof(ShowCreateCriteriaAction));
+        this.RaisePropertyChanged(nameof(ShowAddRootCriterionAction));
+        this.RaisePropertyChanged(nameof(HasCopyCriteriaTargets));
+        this.RaisePropertyChanged(nameof(ShowCopyCriteriaAction));
     }
 
     static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
