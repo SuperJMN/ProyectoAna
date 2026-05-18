@@ -2,39 +2,90 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:controls="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="EvaluacionesApp.Desktop.Features.Courses.CoursesView"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Courses"
              x:DataType="vm:CoursesViewModel">
-  <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,*">
-    <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
-      <EnhancedButton Content="Añadir curso" Command="{Binding AddCourse}"/>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <FlexPanel Direction="Column"
+               Gap="12"
+               Margin="8"
+               AlignItems="Stretch">
+      <FlexPanel Wrap="Wrap"
+                 Gap="8"
+                 AlignItems="Center">
+        <EnhancedButton Content="Añadir curso"
+                        Icon="{Icon mdi-plus-circle-outline}"
+                        Classes="Primary"
+                        Command="{Binding AddCourse}"
+                        IsVisible="{Binding ShowToolbarAddCourseAction}"/>
+      </FlexPanel>
+
+      <BootstrapGridPanel MaxColumns="12"
+                          Gutter="12"
+                          FluidContainer="True">
+        <Card Header="Cursos"
+              BootstrapGridPanel.Col="12"
+              BootstrapGridPanel.ColLg="5">
+          <Panel MinHeight="260">
+            <ListBox ItemsSource="{Binding Courses}"
+                     SelectedItem="{Binding SelectedCourse}"
+                     IsVisible="{Binding ShowCourseList}">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <FlexPanel Direction="Column"
+                       Margin="12"
+                       Gap="12"
+                       AlignItems="Center"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding ShowCoursesEmptyState}">
+              <TextBlock Text="Sin cursos"
+                         FontSize="18"
+                         FontWeight="SemiBold"
+                         TextAlignment="Center"/>
+              <TextBlock Text="Crea el primer curso para empezar a organizar tus clases y evaluaciones."
+                         TextWrapping="Wrap"
+                         TextAlignment="Center"
+                         MaxWidth="360"/>
+              <EnhancedButton Content="Añadir curso"
+                              Icon="{Icon mdi-plus-circle-outline}"
+                              Classes="Primary"
+                              Command="{Binding AddCourse}"/>
+            </FlexPanel>
+          </Panel>
+        </Card>
+
+        <Card Header="Datos del curso"
+              IsVisible="{Binding ShowCourseDetails}"
+              BootstrapGridPanel.Col="12"
+              BootstrapGridPanel.ColLg="7">
+          <FlexPanel Direction="Column"
+                     Gap="10"
+                     AlignItems="Stretch">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
+              <TextBox Grid.Column="1"
+                       TextInputOptions.ContentType="Normal"
+                       TextInputOptions.ReturnKeyType="Next"
+                       Text="{Binding SelectedCourse.Name}"/>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <TextBlock Text="Número:" VerticalAlignment="Center"/>
+              <NumericUpDown Grid.Column="1"
+                             Minimum="1"
+                             Maximum="1000"
+                             Increment="1"
+                             Value="{Binding SelectedCourse.Number}"/>
+            </Grid>
+          </FlexPanel>
+        </Card>
+      </BootstrapGridPanel>
     </FlexPanel>
-    <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <TextBlock Text="{Binding Name}"/>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
-    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
-      <TextBlock Text="Datos del curso" FontWeight="Bold"/>
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
-        <TextBox Grid.Column="1"
-                 TextInputOptions.ContentType="Normal"
-                 TextInputOptions.ReturnKeyType="Next"
-                 Text="{Binding SelectedCourse.Name}"/>
-      </Grid>
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Número:" VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Column="1"
-                       Minimum="1"
-                       Maximum="1000"
-                       Increment="1"
-                       Value="{Binding SelectedCourse.Number}"/>
-      </Grid>
-    </StackPanel>
-  </Grid>
+  </ScrollViewer>
 </UserControl>

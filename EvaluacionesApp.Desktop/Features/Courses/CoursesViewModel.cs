@@ -63,6 +63,17 @@ public partial class CoursesViewModel : ReactiveValidationObject, IDisposable
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
             .DisposeWith(anchors);
+
+        root.CoursesChanges
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .Subscribe(_ => RaiseCourseStateChanged())
+            .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedCourse)
+            .Subscribe(_ => RaiseCourseStateChanged())
+            .DisposeWith(anchors);
+
+        RaiseCourseStateChanged();
         await Task.CompletedTask;
     }
 
@@ -86,6 +97,28 @@ public partial class CoursesViewModel : ReactiveValidationObject, IDisposable
             .Select(course => course?.WhenAnyValue(x => x.Name).Select(HasText) ?? Observable.Return(true))
             .Switch()
             .DistinctUntilChanged();
+    }
+
+    public bool HasCourses => Courses.Count > 0;
+
+    public bool HasSelectedCourse => SelectedCourse != null;
+
+    public bool ShowCoursesEmptyState => !HasCourses;
+
+    public bool ShowCourseList => HasCourses;
+
+    public bool ShowCourseDetails => HasSelectedCourse;
+
+    public bool ShowToolbarAddCourseAction => HasCourses;
+
+    void RaiseCourseStateChanged()
+    {
+        this.RaisePropertyChanged(nameof(HasCourses));
+        this.RaisePropertyChanged(nameof(HasSelectedCourse));
+        this.RaisePropertyChanged(nameof(ShowCoursesEmptyState));
+        this.RaisePropertyChanged(nameof(ShowCourseList));
+        this.RaisePropertyChanged(nameof(ShowCourseDetails));
+        this.RaisePropertyChanged(nameof(ShowToolbarAddCourseAction));
     }
 
     static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);

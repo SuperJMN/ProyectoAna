@@ -74,6 +74,28 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public async Task CoursesViewModel_exposes_empty_state_until_first_course_is_added()
+    {
+        using var store = RecordingSchoolStore.FromDomain(new Root());
+        using var viewModel = new CoursesViewModel(store, new NullNotificationService());
+
+        Assert.False(viewModel.HasCourses);
+        Assert.True(viewModel.ShowCoursesEmptyState);
+        Assert.False(viewModel.ShowCourseList);
+        Assert.False(viewModel.ShowCourseDetails);
+        Assert.False(viewModel.ShowToolbarAddCourseAction);
+
+        await viewModel.AddCourse.Execute();
+
+        Assert.True(viewModel.HasCourses);
+        Assert.False(viewModel.ShowCoursesEmptyState);
+        Assert.True(viewModel.ShowCourseList);
+        Assert.True(viewModel.ShowCourseDetails);
+        Assert.True(viewModel.ShowToolbarAddCourseAction);
+        Assert.Equal("Curso 1", viewModel.SelectedCourse!.Name);
+    }
+
+    [Fact]
     public async Task ClassesViewModel_creates_classes_with_teacher_facing_default_name()
     {
         using var store = RecordingSchoolStore.FromDomain(new Root
@@ -87,6 +109,50 @@ public sealed class ValidationViewModelTests
 
         await viewModel.AddClass.Execute();
 
+        Assert.Equal("Clase 1", viewModel.SelectedClass!.Name);
+    }
+
+    [Fact]
+    public void ClassesViewModel_exposes_no_courses_state()
+    {
+        using var store = RecordingSchoolStore.FromDomain(new Root());
+        using var viewModel = new ClassesViewModel(store, new NullNotificationService());
+
+        Assert.False(viewModel.HasCourses);
+        Assert.True(viewModel.ShowNoCoursesState);
+        Assert.False(viewModel.ShowClassesEmptyState);
+        Assert.False(viewModel.ShowClassList);
+        Assert.False(viewModel.ShowClassDetails);
+        Assert.False(viewModel.ShowToolbarAddClassAction);
+    }
+
+    [Fact]
+    public async Task ClassesViewModel_exposes_empty_classes_state_until_first_class_is_added()
+    {
+        using var store = RecordingSchoolStore.FromDomain(new Root
+        {
+            Courses =
+            {
+                new Course { Id = "course-1", Name = "1 ESO", Terms = { 1 } }
+            }
+        });
+        using var viewModel = new ClassesViewModel(store, new NullNotificationService());
+
+        Assert.True(viewModel.HasCourses);
+        Assert.True(viewModel.HasSelectedCourse);
+        Assert.False(viewModel.HasClassesForSelectedCourse);
+        Assert.True(viewModel.ShowClassesEmptyState);
+        Assert.False(viewModel.ShowClassList);
+        Assert.False(viewModel.ShowClassDetails);
+        Assert.False(viewModel.ShowToolbarAddClassAction);
+
+        await viewModel.AddClass.Execute();
+
+        Assert.True(viewModel.HasClassesForSelectedCourse);
+        Assert.False(viewModel.ShowClassesEmptyState);
+        Assert.True(viewModel.ShowClassList);
+        Assert.True(viewModel.ShowClassDetails);
+        Assert.True(viewModel.ShowToolbarAddClassAction);
         Assert.Equal("Clase 1", viewModel.SelectedClass!.Name);
     }
 

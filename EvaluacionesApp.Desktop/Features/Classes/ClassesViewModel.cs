@@ -63,6 +63,17 @@ public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
         this.WhenAnyValue(x => x.SelectedCourse)
             .Subscribe(HandleSelectedCourseChanged)
             .DisposeWith(anchors);
+
+        this.WhenAnyValue(x => x.SelectedClass)
+            .Subscribe(_ => RaiseClassStateChanged())
+            .DisposeWith(anchors);
+
+        root.CoursesChanges
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .Subscribe(_ => RaiseClassStateChanged())
+            .DisposeWith(anchors);
+
+        RaiseClassStateChanged();
         await Task.CompletedTask;
     }
 
@@ -73,6 +84,8 @@ public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
 
         if (course == null)
         {
+            SelectedClass = null;
+            RaiseClassStateChanged();
             return;
         }
 
@@ -86,7 +99,21 @@ public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
             .InvokeCommand(Save)
             .DisposeWith(courseAnchors);
 
+        course.ClassesChanges
+            .ObserveOn(RxSchedulers.MainThreadScheduler)
+            .Subscribe(_ =>
+            {
+                if (SelectedClass != null && !course.Classes.Contains(SelectedClass))
+                {
+                    SelectedClass = course.Classes.FirstOrDefault();
+                }
+
+                RaiseClassStateChanged();
+            })
+            .DisposeWith(courseAnchors);
+
         SelectedClass = course.Classes.FirstOrDefault();
+        RaiseClassStateChanged();
     }
 
     async Task DoAddClass()
@@ -114,6 +141,37 @@ public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
             .Select(cls => cls?.WhenAnyValue(x => x.Name).Select(HasText) ?? Observable.Return(true))
             .Switch()
             .DistinctUntilChanged();
+    }
+
+    public bool HasCourses => Courses.Count > 0;
+
+    public bool HasSelectedCourse => SelectedCourse != null;
+
+    public bool HasClassesForSelectedCourse => SelectedCourse?.Classes.Count > 0;
+
+    public bool HasSelectedClass => SelectedClass != null;
+
+    public bool ShowNoCoursesState => !HasCourses;
+
+    public bool ShowClassesEmptyState => HasSelectedCourse && !HasClassesForSelectedCourse;
+
+    public bool ShowClassList => HasClassesForSelectedCourse;
+
+    public bool ShowClassDetails => HasSelectedClass;
+
+    public bool ShowToolbarAddClassAction => HasClassesForSelectedCourse;
+
+    void RaiseClassStateChanged()
+    {
+        this.RaisePropertyChanged(nameof(HasCourses));
+        this.RaisePropertyChanged(nameof(HasSelectedCourse));
+        this.RaisePropertyChanged(nameof(HasClassesForSelectedCourse));
+        this.RaisePropertyChanged(nameof(HasSelectedClass));
+        this.RaisePropertyChanged(nameof(ShowNoCoursesState));
+        this.RaisePropertyChanged(nameof(ShowClassesEmptyState));
+        this.RaisePropertyChanged(nameof(ShowClassList));
+        this.RaisePropertyChanged(nameof(ShowClassDetails));
+        this.RaisePropertyChanged(nameof(ShowToolbarAddClassAction));
     }
 
     static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);
