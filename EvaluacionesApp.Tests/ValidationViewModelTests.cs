@@ -177,6 +177,27 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public async Task StudentsViewModel_exposes_empty_state_until_first_student_is_added()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutStudents());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+
+        Assert.True(viewModel.HasStudentsEmptyState);
+        Assert.False(viewModel.HasStudentsInSelectedClass);
+        Assert.True(viewModel.CanAddStudentsToSelectedClass);
+        Assert.False(viewModel.ShowStudentsMasterDetails);
+        Assert.False(viewModel.ShowCompactStudentsSelection);
+        Assert.Equal("La clase no tiene alumnos", viewModel.StudentsEmptyStateTitle);
+
+        await viewModel.AddStudent.Execute();
+
+        Assert.False(viewModel.HasStudentsEmptyState);
+        Assert.True(viewModel.HasStudentsInSelectedClass);
+        Assert.True(viewModel.ShowStudentsMasterDetails);
+        Assert.NotNull(viewModel.SelectedStudent);
+    }
+
+    [Fact]
     public async Task CriteriaViewModel_reports_error_when_selected_criterion_is_invalid()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
@@ -439,6 +460,30 @@ public sealed class ValidationViewModelTests
                             {
                                 new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
                             }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithoutStudents()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1 },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A"
                         }
                     }
                 }

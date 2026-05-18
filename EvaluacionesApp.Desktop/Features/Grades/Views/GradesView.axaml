@@ -102,46 +102,67 @@
             <ComboBox ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}" Width="100" />
         </FlexPanel>
 
-        <MasterDetailsView ItemsSource="{Binding ScoreRows}"
-                           SelectedItem="{Binding SelectedScoreRow, Mode=TwoWay}"
-                           NavigationKey="{Binding ScoreDetailsScopeKey}"
-                           CompactWidth="720"
-                           MasterPaneWidth="420">
-            <MasterDetailsView.WideMasterTemplate>
-                <DataTemplate DataType="controls:MasterDetailsViewContext">
-                    <DataGrid Width="{Binding MasterPaneWidth}"
-                              x:CompileBindings="False"
-                              ItemsSource="{Binding ItemsSource}"
-                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                              AutoGenerateColumns="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
-                            <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
-                            <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DataTemplate>
-            </MasterDetailsView.WideMasterTemplate>
+        <Panel>
+            <MasterDetailsView ItemsSource="{Binding ScoreRows}"
+                               SelectedItem="{Binding SelectedScoreRow, Mode=TwoWay}"
+                               NavigationKey="{Binding ScoreDetailsScopeKey}"
+                               CompactWidth="720"
+                               MasterPaneWidth="420"
+                               IsVisible="{Binding HasGradeBookContent}">
+                <MasterDetailsView.WideMasterTemplate>
+                    <DataTemplate DataType="controls:MasterDetailsViewContext">
+                        <DataGrid Width="{Binding MasterPaneWidth}"
+                                  x:CompileBindings="False"
+                                  ItemsSource="{Binding ItemsSource}"
+                                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                  AutoGenerateColumns="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Width="*" Header="Apellidos" Binding="{Binding Student.LastName}" />
+                                <DataGridTextColumn Width="*" Header="Nombre" Binding="{Binding Student.FirstName}" />
+                                <DataGridTextColumn Header="Nota global" Binding="{Binding Total, StringFormat=F2}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DataTemplate>
+                </MasterDetailsView.WideMasterTemplate>
 
-            <MasterDetailsView.CompactItemTemplate>
-                <DataTemplate x:DataType="vm:ScoreRow">
-                    <StackPanel>
-                        <TextBlock Text="{Binding Student.FullName}" FontWeight="SemiBold" />
-                        <TextBlock>
-                            <TextBlock.Text>
-                                <Binding Path="Total" StringFormat="Nota global: {0:F2}" />
-                            </TextBlock.Text>
-                        </TextBlock>
-                    </StackPanel>
-                </DataTemplate>
-            </MasterDetailsView.CompactItemTemplate>
+                <MasterDetailsView.CompactItemTemplate>
+                    <DataTemplate x:DataType="vm:ScoreRow">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Student.FullName}" FontWeight="SemiBold" />
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <Binding Path="Total" StringFormat="Nota global: {0:F2}" />
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </MasterDetailsView.CompactItemTemplate>
 
-            <MasterDetailsView.DetailsTemplate>
-                <DataTemplate x:DataType="vm:ScoreRow">
-                    <ContentControl Content="{Binding}"
-                                    ContentTemplate="{StaticResource ScoreDetailsTemplate}" />
-                </DataTemplate>
-            </MasterDetailsView.DetailsTemplate>
-        </MasterDetailsView>
+                <MasterDetailsView.DetailsTemplate>
+                    <DataTemplate x:DataType="vm:ScoreRow">
+                        <ContentControl Content="{Binding}"
+                                        ContentTemplate="{StaticResource ScoreDetailsTemplate}" />
+                    </DataTemplate>
+                </MasterDetailsView.DetailsTemplate>
+            </MasterDetailsView>
+
+            <FlexPanel Direction="Column"
+                       Gap="12"
+                       Margin="24"
+                       MaxWidth="520"
+                       AlignItems="Center"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding HasGradesEmptyState}">
+                <TextBlock Text="{Binding GradesEmptyStateTitle}"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="{Binding GradesEmptyStateMessage}"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+            </FlexPanel>
+        </Panel>
     </DockPanel>
 </UserControl>

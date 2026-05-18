@@ -41,6 +41,24 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     [Reactive]
     private IEnumerable<ScopedCriterionNode> criteriaTree = Enumerable.Empty<ScopedCriterionNode>();
 
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasStudentsForSelectedClass;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasCriteriaForSelectedTerm;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasGradeBookContent;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasGradesEmptyState;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private string gradesEmptyStateTitle = string.Empty;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private string gradesEmptyStateMessage = string.Empty;
+
     private readonly Zafiro.UI.INotificationService? notifications;
 
     public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null)
@@ -206,6 +224,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         {
             SelectedScoreRow = null;
             CriteriaTree = Enumerable.Empty<ScopedCriterionNode>();
+            UpdateEmptyState(SelectedCourse, SelectedClass, []);
             return;
         }
 
@@ -218,6 +237,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .ToList();
         CriteriaTree = tree;
         var leaves = course.EnumerateLeafCriteria(SelectedTerm).ToList();
+        UpdateEmptyState(course, cls, leaves);
 
         foreach (var leaf in leaves)
         {
@@ -239,6 +259,37 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         SelectedScoreRow = previousSelection
             .Bind(id => Maybe<ScoreRow>.From(ScoreRows.FirstOrDefault(r => r.Student.Id == id)))
             .Match(value => value, () => ScoreRows.FirstOrDefault());
+    }
+
+    void UpdateEmptyState(DynamicCourse? course, DynamicClass? cls, IReadOnlyCollection<DynamicCriterion> leaves)
+    {
+        var hasStudents = cls?.Students.Count > 0;
+        var hasCriteria = leaves.Count > 0;
+
+        HasStudentsForSelectedClass = hasStudents;
+        HasCriteriaForSelectedTerm = hasCriteria;
+        HasGradeBookContent = course != null && cls != null && hasStudents && hasCriteria;
+        HasGradesEmptyState = !HasGradeBookContent;
+
+        (GradesEmptyStateTitle, GradesEmptyStateMessage) = (course, cls, hasStudents, hasCriteria) switch
+        {
+            (null, _, _, _) => (
+                "Sin cursos disponibles",
+                "Crea un curso y una clase antes de introducir notas."),
+            (_, null, _, _) => (
+                "Sin clases en este curso",
+                "Crea una clase o elige otro curso para continuar."),
+            (_, _, false, false) => (
+                "Faltan alumnos y criterios",
+                "Añade alumnos a esta clase y crea criterios para el trimestre antes de poner notas."),
+            (_, _, false, true) => (
+                "La clase no tiene alumnos",
+                "Añade alumnos en la sección Alumnos o elige otra clase para introducir notas."),
+            (_, _, true, false) => (
+                "Sin criterios para este trimestre",
+                "Crea criterios para este trimestre antes de introducir notas."),
+            _ => (string.Empty, string.Empty)
+        };
     }
 
     static Dictionary<string, decimal> ComputeWeights(IReadOnlyCollection<ScopedCriterionNode> roots)

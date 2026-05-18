@@ -178,6 +178,73 @@ public class GradesViewModelTests
     }
 
     [Fact]
+    public async Task Empty_state_explains_when_students_and_criteria_are_missing()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutStudentsAndCriteria());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.HasGradesEmptyState);
+        Assert.False(viewModel.HasGradeBookContent);
+        Assert.False(viewModel.HasStudentsForSelectedClass);
+        Assert.False(viewModel.HasCriteriaForSelectedTerm);
+        Assert.Equal("Faltan alumnos y criterios", viewModel.GradesEmptyStateTitle);
+    }
+
+    [Fact]
+    public async Task Empty_state_explains_when_students_are_missing()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutStudents());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.HasGradesEmptyState);
+        Assert.False(viewModel.HasGradeBookContent);
+        Assert.False(viewModel.HasStudentsForSelectedClass);
+        Assert.True(viewModel.HasCriteriaForSelectedTerm);
+        Assert.Equal("La clase no tiene alumnos", viewModel.GradesEmptyStateTitle);
+    }
+
+    [Fact]
+    public async Task Empty_state_explains_when_criteria_are_missing()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutCriteria());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.HasGradesEmptyState);
+        Assert.False(viewModel.HasGradeBookContent);
+        Assert.True(viewModel.HasStudentsForSelectedClass);
+        Assert.False(viewModel.HasCriteriaForSelectedTerm);
+        Assert.Equal("Sin criterios para este trimestre", viewModel.GradesEmptyStateTitle);
+    }
+
+    [Fact]
+    public async Task Empty_state_is_hidden_when_students_and_criteria_exist()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.False(viewModel.HasGradesEmptyState);
+        Assert.True(viewModel.HasGradeBookContent);
+        Assert.True(viewModel.HasStudentsForSelectedClass);
+        Assert.True(viewModel.HasCriteriaForSelectedTerm);
+    }
+
+    [Fact]
     public async Task Switching_term_excludes_legacy_criteria_from_other_terms()
     {
         var scheduler = new TestScheduler();
@@ -518,6 +585,46 @@ public class GradesViewModelTests
             Assessments = new List<Assessment>()
         });
 
+        return root;
+    }
+
+    private static Root CreateRootWithoutStudentsAndCriteria()
+    {
+        return new Root
+        {
+            Courses =
+            [
+                new Course
+                {
+                    Id = "course-empty",
+                    Name = "Course Empty",
+                    Terms = [1],
+                    Classes =
+                    [
+                        new Class
+                        {
+                            Id = "class-empty",
+                            Name = "Class Empty",
+                            Students = [],
+                            Assessments = new List<Assessment>()
+                        }
+                    ]
+                }
+            ]
+        };
+    }
+
+    private static Root CreateRootWithoutStudents()
+    {
+        var root = CreateRootWithoutStudentsAndCriteria();
+        root.Courses[0].Criteria.Add(new Criterion { Id = "criterion-empty", Name = "Criterion Empty", Weight = 1, ClassId = string.Empty, Term = 1 });
+        return root;
+    }
+
+    private static Root CreateRootWithoutCriteria()
+    {
+        var root = CreateRootWithoutStudentsAndCriteria();
+        root.Courses[0].Classes[0].Students.Add(new Student { Id = "student-empty", FirstName = "Student" });
         return root;
     }
 }

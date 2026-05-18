@@ -52,6 +52,20 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     [Reactive] private DynamicClass? selectedClass;
     [Reactive(SetModifier = AccessModifier.Private)]
     private IReadOnlyList<DynamicStudent> compactSelectionStudents = [];
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasStudentsInSelectedClass;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool hasStudentsEmptyState;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool canAddStudentsToSelectedClass;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showStudentsMasterDetails;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showCompactStudentsSelection;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private string studentsEmptyStateTitle = string.Empty;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private string studentsEmptyStateMessage = string.Empty;
     private DynamicStudent? selectedStudent;
     private bool syncingStudentSelection;
     private bool syncingSchoolSelection;
@@ -508,12 +522,19 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
     {
         CompactSelectionStudents = SelectedClass?.Students.ToArray() ?? [];
         StudentsSelection.SelectionModel.Source = CompactSelectionStudents;
+        UpdateStudentsState();
     }
 
     void EnableCompactSelectionMode()
     {
+        if (!HasStudentsInSelectedClass)
+        {
+            return;
+        }
+
         IsCompactSelectionMode = true;
         StudentsSelection.SelectionModel.SingleSelect = false;
+        UpdateStudentsState();
     }
 
     void DisableCompactSelectionMode()
@@ -521,6 +542,32 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         IsCompactSelectionMode = false;
         NormalizeSelectionToSingleItem();
         StudentsSelection.SelectionModel.SingleSelect = false;
+        UpdateStudentsState();
+    }
+
+    void UpdateStudentsState()
+    {
+        var hasStudents = CompactSelectionStudents.Count > 0;
+
+        HasStudentsInSelectedClass = hasStudents;
+        CanAddStudentsToSelectedClass = SelectedClass != null;
+        ShowStudentsMasterDetails = hasStudents && !IsCompactSelectionMode;
+        ShowCompactStudentsSelection = hasStudents && IsCompactSelectionMode;
+        HasStudentsEmptyState = SelectedClass == null || !hasStudents;
+
+        (StudentsEmptyStateTitle, StudentsEmptyStateMessage) = (SelectedCourse, SelectedClass, hasStudents) switch
+        {
+            (null, _, _) => (
+                "Sin cursos disponibles",
+                "Crea un curso y una clase antes de registrar alumnos."),
+            (_, null, _) => (
+                "Sin clases en este curso",
+                "Crea una clase o elige otro curso para registrar alumnos."),
+            (_, _, false) => (
+                "La clase no tiene alumnos",
+                "Añade el primer alumno para empezar a completar sus datos."),
+            _ => (string.Empty, string.Empty)
+        };
     }
 
     void NormalizeSelectionToSingleItem()

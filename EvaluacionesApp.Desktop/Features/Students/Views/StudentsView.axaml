@@ -101,18 +101,29 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
-            <EnhancedButton Content="Añadir" Command="{Binding AddStudent}" />
-            <EnhancedButton Content="Eliminar" Command="{Binding DeleteStudent}" />
+            <EnhancedButton Content="Añadir alumno"
+                            Icon="{Icon mdi-plus-circle-outline}"
+                            Classes="Primary"
+                            Command="{Binding AddStudent}" />
+            <EnhancedButton Content="Eliminar"
+                            Icon="{Icon mdi-delete-outline}"
+                            Classes="Destructive"
+                            Command="{Binding DeleteStudent}"
+                            IsVisible="{Binding HasStudentsInSelectedClass}" />
             <EnhancedButton Content="Mover a clase"
-                            IsEnabled="{Binding StudentsSelection.SelectedItems.Count}">
+                            Icon="{Icon mdi-arrow-right-bold-outline}"
+                            IsEnabled="{Binding StudentsSelection.SelectedItems.Count}"
+                            IsVisible="{Binding HasStudentsInSelectedClass}">
                 <Button.Flyout>
                     <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
                 </Button.Flyout>
             </EnhancedButton>
             <EnhancedButton Content="Seleccionar"
+                            Icon="{Icon mdi-checkbox-multiple-marked-outline}"
                             Command="{Binding EnterCompactSelectionMode}"
-                            IsVisible="{Binding !IsCompactSelectionMode}" />
+                            IsVisible="{Binding ShowStudentsMasterDetails}" />
             <EnhancedButton Content="Cancelar"
+                            Icon="{Icon mdi-close-circle-outline}"
                             Command="{Binding ExitCompactSelectionMode}"
                             IsVisible="{Binding IsCompactSelectionMode}" />
         </FlexPanel>
@@ -123,7 +134,7 @@
                                NavigationKey="{Binding SelectedClass}"
                                CompactWidth="720"
                                MasterPaneWidth="320"
-                               IsVisible="{Binding !IsCompactSelectionMode}">
+                               IsVisible="{Binding ShowStudentsMasterDetails}">
                 <MasterDetailsView.ItemTemplate>
                     <DataTemplate x:DataType="dynamic:DynamicStudent">
                         <TextBlock Text="{Binding FullName}" />
@@ -150,7 +161,7 @@
             </MasterDetailsView>
 
             <ListBox Margin="8"
-                     IsVisible="{Binding IsCompactSelectionMode}"
+                     IsVisible="{Binding ShowCompactStudentsSelection}"
                      ItemsSource="{Binding CompactSelectionStudents}"
                      SelectionMode="Multiple"
                      Selection="{Binding StudentsSelection.SelectionModel}">
@@ -160,6 +171,29 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+
+            <FlexPanel Direction="Column"
+                       Gap="12"
+                       Margin="24"
+                       MaxWidth="520"
+                       AlignItems="Center"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding HasStudentsEmptyState}">
+                <TextBlock Text="{Binding StudentsEmptyStateTitle}"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="{Binding StudentsEmptyStateMessage}"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+                <EnhancedButton Content="Añadir alumno"
+                                Icon="{Icon mdi-plus-circle-outline}"
+                                Classes="Primary"
+                                Command="{Binding AddStudent}"
+                                IsVisible="{Binding CanAddStudentsToSelectedClass}" />
+            </FlexPanel>
         </Panel>
     </Grid>
 </UserControl>
