@@ -16,16 +16,18 @@ using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+using Zafiro.UI.Shell;
 using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Grades;
 
-[Section(name: "Grades", icon: "mdi-numeric-3-box-multiple", sortIndex: 1, FriendlyName = "Notas")]
+[Section(name: "Grades", icon: "mdi-numeric-3-box-multiple", sortIndex: 6, FriendlyName = "Notas")]
 public partial class GradesViewModel : ReactiveObject, IDisposable
 {
     private readonly IDynamicSchoolStore store;
     private readonly SchoolSelectionState selection;
     private readonly IScheduler scheduler;
+    private readonly IShell? shell;
     private readonly CompositeDisposable anchors = new();
     private readonly SourceCache<ScoreRow, string> scoreRowsCache = new(row => row.Student.Id);
     private readonly ObservableCollection<DynamicCriterion> leafCriteriaInternal = new();
@@ -59,10 +61,22 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     [Reactive(SetModifier = AccessModifier.Private)]
     private string gradesEmptyStateMessage = string.Empty;
 
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showOpenCoursesAction;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showOpenClassesAction;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showOpenStudentsAction;
+
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private bool showOpenCriteriaAction;
+
     private readonly Zafiro.UI.INotificationService? notifications;
 
-    public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null)
-        : this(store, scheduler, autoSaveInterval, selection)
+    public GradesViewModel(IDynamicSchoolStore store, Zafiro.UI.INotificationService notifications, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null, IShell? shell = null)
+        : this(store, scheduler, autoSaveInterval, selection, shell)
     {
         this.notifications = notifications;
         Save.ThrownExceptions
@@ -70,11 +84,12 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .DisposeWith(anchors);
     }
 
-    public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null)
+    public GradesViewModel(IDynamicSchoolStore store, IScheduler? scheduler = null, TimeSpan? autoSaveInterval = null, SchoolSelectionState? selection = null, IShell? shell = null)
     {
         this.store = store;
         this.selection = selection ?? new SchoolSelectionState();
         this.scheduler = scheduler ?? RxSchedulers.MainThreadScheduler;
+        this.shell = shell;
         var interval = autoSaveInterval ?? TimeSpan.FromSeconds(5);
 
         LeafCriteria = new ReadOnlyObservableCollection<DynamicCriterion>(leafCriteriaInternal);
@@ -82,6 +97,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         Save = ReactiveCommand.CreateFromTask(ExecuteSave);
         Reload = ReactiveCommand.CreateFromTask(DoReload);
         RebuildRows = ReactiveCommand.Create(RebuildScoreRows);
+        OpenCourses = CreateNavigationCommand("Courses");
+        OpenClasses = CreateNavigationCommand("Classes");
+        OpenStudents = CreateNavigationCommand("Students");
+        OpenCriteria = CreateNavigationCommand("Criteria");
 
         scoreRowsCache
             .Connect()
@@ -103,6 +122,15 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Select(ResolveClass)
             .ObserveOn(this.scheduler)
             .BindTo(this, x => x.SelectedClass)
+            .DisposeWith(anchors);
+
+        selectedCourseChanges
+            .Select(course => course != null
+                ? course.ClassesChanges.Select(_ => Unit.Default).StartWith(Unit.Default)
+                : Observable.Return(Unit.Default))
+            .Switch()
+            .ObserveOn(this.scheduler)
+            .Subscribe(_ => EnsureSelectedClass())
             .DisposeWith(anchors);
 
         BindSchoolSelection();
@@ -199,6 +227,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
     public ReactiveCommand<Unit, Unit> Reload { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
     public ReactiveCommand<Unit, Unit> RebuildRows { get; }
+    public ReactiveCommand<Unit, Unit> OpenCourses { get; }
+    public ReactiveCommand<Unit, Unit> OpenClasses { get; }
+    public ReactiveCommand<Unit, Unit> OpenStudents { get; }
+    public ReactiveCommand<Unit, Unit> OpenCriteria { get; }
 
     async Task Load()
     {
@@ -206,6 +238,12 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         Courses = root.Courses;
         SelectedCourse = ResolveCourse(selection.SelectedCourse);
         UpdateTerms(SelectedCourse);
+
+        root.CoursesChanges
+            .ObserveOn(scheduler)
+            .Subscribe(_ => EnsureSelectedCourse())
+            .DisposeWith(anchors);
+
         await Task.CompletedTask;
     }
 
@@ -270,6 +308,10 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
         HasCriteriaForSelectedTerm = hasCriteria;
         HasGradeBookContent = course != null && cls != null && hasStudents && hasCriteria;
         HasGradesEmptyState = !HasGradeBookContent;
+        ShowOpenCoursesAction = course == null;
+        ShowOpenClassesAction = course != null && cls == null;
+        ShowOpenStudentsAction = course != null && cls != null && !hasStudents;
+        ShowOpenCriteriaAction = course != null && cls != null && !hasCriteria;
 
         (GradesEmptyStateTitle, GradesEmptyStateMessage) = (course, cls, hasStudents, hasCriteria) switch
         {
@@ -290,6 +332,29 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
                 "Crea criterios para este trimestre antes de introducir notas."),
             _ => (string.Empty, string.Empty)
         };
+    }
+
+    ReactiveCommand<Unit, Unit> CreateNavigationCommand(string sectionId)
+    {
+        return ReactiveCommand.Create(() => shell?.GoToSection(sectionId));
+    }
+
+    void EnsureSelectedCourse()
+    {
+        var resolved = ResolveCourse(SelectedCourse ?? selection.SelectedCourse);
+        if (!ReferenceEquals(SelectedCourse, resolved))
+        {
+            SelectedCourse = resolved;
+        }
+    }
+
+    void EnsureSelectedClass()
+    {
+        var resolved = ResolveClass(SelectedCourse);
+        if (!ReferenceEquals(SelectedClass, resolved))
+        {
+            SelectedClass = resolved;
+        }
     }
 
     static Dictionary<string, decimal> ComputeWeights(IReadOnlyCollection<ScopedCriterionNode> roots)

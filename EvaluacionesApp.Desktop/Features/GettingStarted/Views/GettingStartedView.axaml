@@ -46,23 +46,27 @@
                     <FlexPanel Direction="Column"
                                Gap="12"
                                AlignItems="Start">
-                        <TextBlock Text="El asistente inicial crea los cursos y clases de partida. Después puedes completar alumnos, criterios y notas desde sus secciones."
+                        <TextBlock Text="{Binding NextSetupStepTitle}"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding NextSetupStepMessage}"
                                    TextWrapping="Wrap" />
                         <EnhancedButton Content="Iniciar asistente"
                                         Icon="{Icon mdi-play-circle-outline}"
                                         Classes="Primary"
                                         Command="{Binding StartInitialSetup}"
                                         IsVisible="{Binding CanStartInitialSetup}" />
-                        <EnhancedButton Content="Abrir cursos"
-                                        Icon="{Icon mdi-school}"
-                                        Classes="Secondary"
-                                        Command="{Binding OpenCourses}"
+                        <EnhancedButton Content="{Binding NextSetupActionText}"
+                                        Icon="{Icon mdi-arrow-right-circle-outline}"
+                                        Classes="Primary"
+                                        Command="{Binding OpenNextSetupStep}"
                                         IsVisible="{Binding !CanStartInitialSetup}" />
                     </FlexPanel>
                 </Card>
 
                 <Card Header="Continuar"
-                      Subheader="Accesos directos a las tareas habituales."
+                      Subheader="Flujo de preparación"
                       BootstrapGridPanel.Col="12"
                       BootstrapGridPanel.ColLg="5">
                     <FlexPanel Direction="Column"
@@ -74,9 +78,15 @@
                         <EnhancedButton Content="Clases"
                                         Icon="{Icon mdi-google-classroom}"
                                         Command="{Binding OpenClasses}" />
+                        <EnhancedButton Content="Alumnos"
+                                        Icon="{Icon mdi-account-group}"
+                                        Command="{Binding OpenStudents}" />
                         <EnhancedButton Content="Criterios"
                                         Icon="{Icon mdi-format-list-bulleted}"
                                         Command="{Binding OpenCriteria}" />
+                        <EnhancedButton Content="Notas"
+                                        Icon="{Icon mdi-numeric-3-box-multiple}"
+                                        Command="{Binding OpenGrades}" />
                     </FlexPanel>
                 </Card>
             </BootstrapGridPanel>

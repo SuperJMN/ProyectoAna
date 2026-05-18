@@ -12,6 +12,9 @@ using EvaluacionesApp.Desktop.Features.Grades.Converters;
 using EvaluacionesApp.Desktop.ViewModels;
 using EvaluacionesApp.Desktop.Features.Grades;
 using Microsoft.Reactive.Testing;
+using Reactive.Bindings;
+using Zafiro.UI.Navigation.Sections;
+using Zafiro.UI.Shell;
 
 namespace EvaluacionesApp.Tests;
 
@@ -192,6 +195,8 @@ public class GradesViewModelTests
         Assert.False(viewModel.HasStudentsForSelectedClass);
         Assert.False(viewModel.HasCriteriaForSelectedTerm);
         Assert.Equal("Faltan alumnos y criterios", viewModel.GradesEmptyStateTitle);
+        Assert.True(viewModel.ShowOpenStudentsAction);
+        Assert.True(viewModel.ShowOpenCriteriaAction);
     }
 
     [Fact]
@@ -209,6 +214,8 @@ public class GradesViewModelTests
         Assert.False(viewModel.HasStudentsForSelectedClass);
         Assert.True(viewModel.HasCriteriaForSelectedTerm);
         Assert.Equal("La clase no tiene alumnos", viewModel.GradesEmptyStateTitle);
+        Assert.True(viewModel.ShowOpenStudentsAction);
+        Assert.False(viewModel.ShowOpenCriteriaAction);
     }
 
     [Fact]
@@ -226,6 +233,113 @@ public class GradesViewModelTests
         Assert.True(viewModel.HasStudentsForSelectedClass);
         Assert.False(viewModel.HasCriteriaForSelectedTerm);
         Assert.Equal("Sin criterios para este trimestre", viewModel.GradesEmptyStateTitle);
+        Assert.False(viewModel.ShowOpenStudentsAction);
+        Assert.True(viewModel.ShowOpenCriteriaAction);
+    }
+
+    [Fact]
+    public async Task Empty_state_exposes_navigation_action_when_courses_are_missing()
+    {
+        var scheduler = new TestScheduler();
+        var shell = new RecordingShell();
+        using var store = RecordingSchoolStore.FromDomain(new Root());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero, shell: shell);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.HasGradesEmptyState);
+        Assert.Equal("Sin cursos disponibles", viewModel.GradesEmptyStateTitle);
+        Assert.True(viewModel.ShowOpenCoursesAction);
+        Assert.False(viewModel.ShowOpenClassesAction);
+        Assert.False(viewModel.ShowOpenStudentsAction);
+        Assert.False(viewModel.ShowOpenCriteriaAction);
+
+        await viewModel.OpenCourses.Execute();
+
+        Assert.Equal("Courses", shell.RequestedSection);
+    }
+
+    [Fact]
+    public async Task Empty_state_exposes_navigation_action_when_classes_are_missing()
+    {
+        var scheduler = new TestScheduler();
+        var shell = new RecordingShell();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutClasses());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero, shell: shell);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.HasGradesEmptyState);
+        Assert.Equal("Sin clases en este curso", viewModel.GradesEmptyStateTitle);
+        Assert.False(viewModel.ShowOpenCoursesAction);
+        Assert.True(viewModel.ShowOpenClassesAction);
+        Assert.False(viewModel.ShowOpenStudentsAction);
+        Assert.False(viewModel.ShowOpenCriteriaAction);
+
+        await viewModel.OpenClasses.Execute();
+
+        Assert.Equal("Classes", shell.RequestedSection);
+    }
+
+    [Fact]
+    public async Task Empty_state_navigation_actions_point_to_missing_students_and_criteria()
+    {
+        var scheduler = new TestScheduler();
+        var shell = new RecordingShell();
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutStudentsAndCriteria());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero, shell: shell);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.True(viewModel.ShowOpenStudentsAction);
+        Assert.True(viewModel.ShowOpenCriteriaAction);
+
+        await viewModel.OpenStudents.Execute();
+        Assert.Equal("Students", shell.RequestedSection);
+
+        await viewModel.OpenCriteria.Execute();
+        Assert.Equal("Criteria", shell.RequestedSection);
+    }
+
+    [Fact]
+    public async Task Empty_state_reacts_when_course_and_class_are_created_after_initialization()
+    {
+        var scheduler = new TestScheduler();
+        using var store = RecordingSchoolStore.FromDomain(new Root());
+        using var viewModel = new GradesViewModel(store, scheduler, TimeSpan.Zero);
+
+        await viewModel.Initialization;
+        Pump(scheduler);
+
+        Assert.Equal("Sin cursos disponibles", viewModel.GradesEmptyStateTitle);
+
+        var course = store.Root.AddCourse(new Course
+        {
+            Id = "course-created",
+            Name = "Course Created",
+            Terms = [1]
+        });
+        Pump(scheduler);
+
+        Assert.Same(course, viewModel.SelectedCourse);
+        Assert.Equal("Sin clases en este curso", viewModel.GradesEmptyStateTitle);
+
+        var cls = course.AddClass(new Class
+        {
+            Id = "class-created",
+            Name = "Class Created",
+            Students = [],
+            Assessments = []
+        });
+        Pump(scheduler);
+
+        Assert.Same(cls, viewModel.SelectedClass);
+        Assert.Equal("Faltan alumnos y criterios", viewModel.GradesEmptyStateTitle);
+        Assert.True(viewModel.ShowOpenStudentsAction);
+        Assert.True(viewModel.ShowOpenCriteriaAction);
     }
 
     [Fact]
@@ -242,6 +356,10 @@ public class GradesViewModelTests
         Assert.True(viewModel.HasGradeBookContent);
         Assert.True(viewModel.HasStudentsForSelectedClass);
         Assert.True(viewModel.HasCriteriaForSelectedTerm);
+        Assert.False(viewModel.ShowOpenCoursesAction);
+        Assert.False(viewModel.ShowOpenClassesAction);
+        Assert.False(viewModel.ShowOpenStudentsAction);
+        Assert.False(viewModel.ShowOpenCriteriaAction);
     }
 
     [Fact]
@@ -614,6 +732,22 @@ public class GradesViewModelTests
         };
     }
 
+    private static Root CreateRootWithoutClasses()
+    {
+        return new Root
+        {
+            Courses =
+            [
+                new Course
+                {
+                    Id = "course-without-classes",
+                    Name = "Course Without Classes",
+                    Terms = [1]
+                }
+            ]
+        };
+    }
+
     private static Root CreateRootWithoutStudents()
     {
         var root = CreateRootWithoutStudentsAndCriteria();
@@ -626,5 +760,19 @@ public class GradesViewModelTests
         var root = CreateRootWithoutStudentsAndCriteria();
         root.Courses[0].Classes[0].Students.Add(new Student { Id = "student-empty", FirstName = "Student" });
         return root;
+    }
+
+    private sealed class RecordingShell : IShell
+    {
+        public IEnumerable<ISection> Sections { get; } = [];
+
+        public ReactiveProperty<ISection> SelectedSection { get; } = new((ISection)null!);
+
+        public string? RequestedSection { get; private set; }
+
+        public void GoToSection(string sectionId)
+        {
+            RequestedSection = sectionId;
+        }
     }
 }

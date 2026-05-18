@@ -162,6 +162,30 @@
                 <TextBlock Text="{Binding GradesEmptyStateMessage}"
                            TextAlignment="Center"
                            TextWrapping="Wrap" />
+                <FlexPanel Gap="8"
+                           Wrap="Wrap"
+                           JustifyContent="Center">
+                    <EnhancedButton Content="Abrir cursos"
+                                    Icon="{Icon mdi-school}"
+                                    Classes="Primary"
+                                    Command="{Binding OpenCourses}"
+                                    IsVisible="{Binding ShowOpenCoursesAction}" />
+                    <EnhancedButton Content="Abrir clases"
+                                    Icon="{Icon mdi-google-classroom}"
+                                    Classes="Primary"
+                                    Command="{Binding OpenClasses}"
+                                    IsVisible="{Binding ShowOpenClassesAction}" />
+                    <EnhancedButton Content="Abrir alumnos"
+                                    Icon="{Icon mdi-account-group}"
+                                    Classes="Primary"
+                                    Command="{Binding OpenStudents}"
+                                    IsVisible="{Binding ShowOpenStudentsAction}" />
+                    <EnhancedButton Content="Abrir criterios"
+                                    Icon="{Icon mdi-format-list-bulleted}"
+                                    Classes="Secondary"
+                                    Command="{Binding OpenCriteria}"
+                                    IsVisible="{Binding ShowOpenCriteriaAction}" />
+                </FlexPanel>
             </FlexPanel>
         </Panel>
     </DockPanel>
