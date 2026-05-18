@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.InitialSetup"
+             mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="360"
+             x:Class="EvaluacionesApp.Desktop.Features.InitialSetup.Views.InitialSetupClassesStepView"
+             x:DataType="vm:InitialSetupClassesStepViewModel"
+             Padding="20">
+    <Design.DataContext>
+        <vm:InitialSetupClassesStepViewModel />
+    </Design.DataContext>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding Courses}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <FlexPanel Direction="Column"
+                               Gap="14"
+                               AlignItems="Stretch" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:InitialSetupCourseClassesViewModel">
+                    <FlexPanel Direction="Column"
+                               Gap="6"
+                               AlignItems="Stretch">
+                        <TextBlock Text="{Binding CourseName}"
+                                   FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding Classes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <FlexPanel Wrap="Wrap"
+                                               Gap="8"
+                                               AlignItems="Start" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:InitialSetupClassOptionViewModel">
+                                    <CheckBox Content="{Binding Name}"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </FlexPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </ScrollViewer>
+</UserControl>

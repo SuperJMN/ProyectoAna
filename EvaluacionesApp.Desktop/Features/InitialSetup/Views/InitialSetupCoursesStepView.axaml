@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.InitialSetup"
+             mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="260"
+             x:Class="EvaluacionesApp.Desktop.Features.InitialSetup.Views.InitialSetupCoursesStepView"
+             x:DataType="vm:InitialSetupCoursesStepViewModel"
+             Padding="20">
+    <Design.DataContext>
+        <vm:InitialSetupCoursesStepViewModel />
+    </Design.DataContext>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <FlexPanel Direction="Column"
+                   Gap="12"
+                   AlignItems="Stretch">
+            <TextBlock Text="Selecciona los cursos que impartes"
+                       TextWrapping="Wrap" />
+            <ItemsControl ItemsSource="{Binding Courses}">
+                <ItemsControl.ItemContainerTheme>
+                    <ControlTheme TargetType="ContentPresenter">
+                        <Setter Property="BootstrapGridPanel.Col" Value="12" />
+                        <Setter Property="BootstrapGridPanel.ColSm" Value="6" />
+                    </ControlTheme>
+                </ItemsControl.ItemContainerTheme>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <BootstrapGridPanel MaxColumns="12"
+                                            Gutter="8"
+                                            FluidContainer="True" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InitialSetupCourseOptionViewModel">
+                        <CheckBox Content="{Binding Name}"
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </FlexPanel>
+    </ScrollViewer>
+</UserControl>

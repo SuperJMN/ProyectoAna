@@ -12,6 +12,7 @@
         <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
         <StyleInclude Source="avares://Zafiro.Avalonia/Styles.axaml" />
         <StyleInclude Source="avares://Zafiro.Avalonia.Dialogs/Styles.axaml" />
+        <StyleInclude Source="Styles/GraphWizard.axaml" />
     </Application.Styles>
 
     <Application.Resources>

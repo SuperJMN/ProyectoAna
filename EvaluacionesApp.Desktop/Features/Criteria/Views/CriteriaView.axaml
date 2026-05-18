@@ -24,19 +24,34 @@
       <EnhancedButton Content="Add Root" Command="{Binding AddRootCriterion}"/>
       <EnhancedButton Content="Add Child" Command="{Binding AddChildCriterion}"/>
       <EnhancedButton Content="Delete" Command="{Binding DeleteCriterion}"/>
+      <EnhancedButton Content="Crear criterios"
+                      Command="{Binding CreateCriteria}"
+                      IsVisible="{Binding HasNoCriteriaForSelectedTerm}"/>
       <EnhancedButton Content="Copiar criterios">
         <Button.Flyout>
           <MenuFlyout ItemsSource="{Binding CopyFeature.CopyCriteriaMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
         </Button.Flyout>
       </EnhancedButton>
     </FlexPanel>
-    <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Criteria}" SelectedItem="{Binding SelectedNode}">
-      <TreeView.ItemTemplate>
-        <TreeDataTemplate ItemsSource="{Binding Children}">
-          <TextBlock Text="{Binding Name}"/>
-        </TreeDataTemplate>
-      </TreeView.ItemTemplate>
-    </TreeView>
+    <Panel Grid.Row="1" Grid.Column="0">
+      <TreeView ItemsSource="{Binding Criteria}"
+                SelectedItem="{Binding SelectedNode}"
+                IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding Name}"/>
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+      </TreeView>
+      <StackPanel Margin="8"
+                  Spacing="8"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  IsVisible="{Binding HasNoCriteriaForSelectedTerm}">
+        <TextBlock Text="Sin criterios para este trimestre"/>
+        <EnhancedButton Content="Crear criterios" Command="{Binding CreateCriteria}"/>
+      </StackPanel>
+    </Panel>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
       <TextBlock Text="Criterion details" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">

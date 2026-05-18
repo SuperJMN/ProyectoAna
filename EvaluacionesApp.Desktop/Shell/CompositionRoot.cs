@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Notifications;
 using Microsoft.Extensions.DependencyInjection;
 using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Features.InitialSetup;
 using EvaluacionesApp.Desktop.ViewModels;
 using Serilog;
 using Zafiro.Avalonia.Dialogs;
@@ -41,6 +42,9 @@ public static class CompositionRoot
         services.AddSingleton<SchoolSelectionState>();
         services.AddSingleton<IDynamicSchoolStore>(sp =>
             new DynamicSchoolStore(sp.GetRequiredService<DynamicRoot>(), sp.GetRequiredService<Services.PersistenceService>()));
+        services.AddSingleton<InitialSetupWizardFactory>();
+        services.AddSingleton<InitialSetupApplicator>();
+        services.AddSingleton<InitialSetupCoordinator>();
 
         var serviceProvider = services.BuildServiceProvider();
         var shell = serviceProvider.GetRequiredService<IShell>();

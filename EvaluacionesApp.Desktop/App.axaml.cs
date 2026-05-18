@@ -5,9 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Markup.Xaml;
 using EvaluacionesApp.Desktop.Dynamic;
+using EvaluacionesApp.Desktop.Features.InitialSetup;
 using EvaluacionesApp.Desktop.Shell;
 using EvaluacionesApp.Desktop.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Avalonia.Threading;
 using Zafiro.Avalonia.Icons;
 using Zafiro.Avalonia.Misc;
 using Zafiro.Avalonia.Controls.Shell;
@@ -44,6 +46,15 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            var coordinator = services?.GetService<InitialSetupCoordinator>();
+            if (coordinator != null)
+            {
+                _ = coordinator.RunIfNeeded();
+            }
+        });
     }
 
     private void OnShutdownRequested(object? sender, ShutdownRequestedEventArgs e)
