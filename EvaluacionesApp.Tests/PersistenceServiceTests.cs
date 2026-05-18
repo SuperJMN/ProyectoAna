@@ -154,6 +154,44 @@ public sealed class PersistenceServiceTests
     }
 
     [Fact]
+    public async Task Save_omits_scores_without_value()
+    {
+        var service = new PersistenceService(CreateDataPath());
+        var root = new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A",
+                            Assessments =
+                            {
+                                new Assessment { StudentId = "student-1", CriterionId = "criterion-1", Score = 7m },
+                                new Assessment { StudentId = "student-1", CriterionId = "criterion-2", Score = null }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        await service.Save(root);
+        var loaded = await service.Load();
+
+        var cls = Assert.Single(Assert.Single(loaded.Courses).Classes);
+        var score = Assert.Single(cls.Assessments);
+        Assert.Equal("criterion-1", score.CriterionId);
+        Assert.Equal(7m, score.Score);
+    }
+
+    [Fact]
     public async Task Load_quarantines_corrupt_json_and_propagates_the_error()
     {
         var path = CreateDataPath();

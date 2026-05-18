@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Avalonia.Data;
 using Avalonia.Data.Converters;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.ViewModels;
@@ -77,6 +78,31 @@ public class IsLeafConverter : IValueConverter
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
+}
+
+public class NullableDecimalTextConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return value is decimal score ? score.ToString(culture) : string.Empty;
+    }
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string text)
+        {
+            return value;
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        return decimal.TryParse(text, NumberStyles.Number, culture, out var score)
+            ? score
+            : new BindingNotification(new FormatException("La nota debe ser un numero"), BindingErrorType.DataValidationError);
+    }
 }
 
 // Devuelve un ScoreBinding para un par (ScoreRow, Criterion)

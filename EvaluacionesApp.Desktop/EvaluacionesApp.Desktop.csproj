@@ -46,6 +46,6 @@
     <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="52.0.4" />
     <PackageReference Include="Zafiro.Avalonia.Generators" Version="52.0.4" PrivateAssets="all" />
     <PackageReference Include="Zafiro.Avalonia.Icons.Optris" Version="52.0.4" />
-    <PackageReference Include="Zafiro.Avalonia.Mcp.AppHost" Version="0.0.57" />
+    <PackageReference Include="Zafiro.Avalonia.Mcp.AppHost" Version="0.0.60" />
   </ItemGroup>
 </Project>

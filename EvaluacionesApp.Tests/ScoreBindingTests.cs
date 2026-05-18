@@ -1,6 +1,8 @@
 using System.Reactive.Concurrency;
+using System.Globalization;
 using EvaluacionesApp.Desktop.Dynamic;
 using EvaluacionesApp.Desktop.Features.Grades;
+using EvaluacionesApp.Desktop.Features.Grades.Converters;
 using Xunit;
 
 namespace EvaluacionesApp.Tests;
@@ -20,5 +22,17 @@ public class ScoreBindingTests
 
         assessment.Score = 5m;
         Assert.Equal(5m, binding.Value);
+    }
+
+    [Fact]
+    public void Nullable_decimal_text_converter_treats_empty_text_as_no_score()
+    {
+        var converter = new NullableDecimalTextConverter();
+
+        var sourceValue = converter.ConvertBack(string.Empty, typeof(decimal?), null, CultureInfo.InvariantCulture);
+        var targetValue = converter.Convert(null, typeof(string), null, CultureInfo.InvariantCulture);
+
+        Assert.Null(sourceValue);
+        Assert.Equal(string.Empty, targetValue);
     }
 }

@@ -424,7 +424,10 @@ public class PersistenceService
             Name = cls.Name ?? string.Empty,
             Students = cls.Students?.Select(ConvertStudentToPersisted).ToList() ?? new List<PersistedStudent>(),
             Assessments = criteria.Select(CreatePersistedAssessment).ToList(),
-            Scores = cls.Assessments?.Select(ConvertScoreToPersisted).ToList() ?? new List<PersistedScore>()
+            Scores = cls.Assessments?
+                .Where(assessment => assessment.Score.HasValue)
+                .Select(ConvertScoreToPersisted)
+                .ToList() ?? new List<PersistedScore>()
         };
     }
 
