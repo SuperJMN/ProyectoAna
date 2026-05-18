@@ -7,68 +7,128 @@
              x:Name="CriteriaViewRoot"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.Criteria"
              x:DataType="vm:CriteriaViewModel">
-  <UserControl.Resources>
-  </UserControl.Resources>
-  <Grid RowDefinitions="Auto, *" ColumnDefinitions="2*,3*">
-    <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
-      <TextBlock Text="Curso:" VerticalAlignment="Center"/>
-      <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding Name}"/>
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-      <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
-      <ComboBox Width="120" ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}"/>
-      <EnhancedButton Content="Añadir criterio principal" Command="{Binding AddRootCriterion}"/>
-      <EnhancedButton Content="Añadir subcriterio" Command="{Binding AddChildCriterion}"/>
-      <EnhancedButton Content="Eliminar" Command="{Binding DeleteCriterion}"/>
-      <EnhancedButton Content="Crear criterios"
-                      Command="{Binding CreateCriteria}"
-                      IsVisible="{Binding HasNoCriteriaForSelectedTerm}"/>
-      <EnhancedButton Content="Copiar criterios">
-        <Button.Flyout>
-          <MenuFlyout ItemsSource="{Binding CopyFeature.CopyCriteriaMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
-        </Button.Flyout>
-      </EnhancedButton>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <FlexPanel Direction="Column"
+               Gap="12"
+               Margin="8"
+               AlignItems="Stretch">
+      <FlexPanel Wrap="Wrap"
+                 Gap="8"
+                 AlignItems="Center">
+        <TextBlock Text="Curso:" VerticalAlignment="Center"/>
+        <ComboBox MinWidth="180"
+                  MaxWidth="280"
+                  FlexPanel.Grow="1"
+                  FlexPanel.Basis="180"
+                  ItemsSource="{Binding Courses}"
+                  SelectedItem="{Binding SelectedCourse}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
+        <ComboBox MinWidth="120"
+                  FlexPanel.Basis="120"
+                  ItemsSource="{Binding Terms}"
+                  SelectedItem="{Binding SelectedTerm}"/>
+      </FlexPanel>
+
+      <FlexPanel Wrap="Wrap"
+                 Gap="8"
+                 AlignItems="Center">
+        <EnhancedButton Content="Criterio principal"
+                        Icon="{Icon mdi-plus-circle-outline}"
+                        Classes="Primary"
+                        Command="{Binding AddRootCriterion}"
+                        IsVisible="{Binding !HasNoCriteriaForSelectedTerm}"/>
+        <EnhancedButton Content="Subcriterio"
+                        Icon="{Icon mdi-playlist-plus}"
+                        Classes="Secondary"
+                        Command="{Binding AddChildCriterion}"
+                        IsVisible="{Binding HasSelectedCriterion}"/>
+        <EnhancedButton Content="Eliminar"
+                        Icon="{Icon mdi-delete-outline}"
+                        Classes="Destructive"
+                        Command="{Binding DeleteCriterion}"
+                        IsEnabled="{Binding SelectedCriterionCanBeDeleted}"
+                        IsVisible="{Binding HasSelectedCriterion}"/>
+        <EnhancedButton Content="Copiar criterios"
+                        Icon="{Icon mdi-content-copy}"
+                        Classes="Secondary"
+                        IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
+          <Button.Flyout>
+            <MenuFlyout ItemsSource="{Binding CopyFeature.CopyCriteriaMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
+          </Button.Flyout>
+        </EnhancedButton>
+      </FlexPanel>
+
+      <BootstrapGridPanel MaxColumns="12"
+                          Gutter="12"
+                          FluidContainer="True">
+        <Card Header="Criterios del trimestre"
+              BootstrapGridPanel.Col="12"
+              BootstrapGridPanel.ColLg="5">
+          <Panel MinHeight="260">
+            <TreeView ItemsSource="{Binding Criteria}"
+                      SelectedItem="{Binding SelectedNode}"
+                      IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
+              <TreeView.ItemTemplate>
+                <TreeDataTemplate ItemsSource="{Binding Children}">
+                  <TextBlock Text="{Binding Name}"/>
+                </TreeDataTemplate>
+              </TreeView.ItemTemplate>
+            </TreeView>
+            <FlexPanel Direction="Column"
+                       Margin="12"
+                       Gap="12"
+                       AlignItems="Center"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding HasNoCriteriaForSelectedTerm}">
+              <TextBlock Text="Sin criterios para este trimestre"
+                         TextAlignment="Center"/>
+              <TextBlock Text="Crea una estructura inicial para empezar a evaluar esta parte del curso."
+                         TextWrapping="Wrap"
+                         TextAlignment="Center"
+                         MaxWidth="360"/>
+              <EnhancedButton Content="Crear criterios"
+                              Icon="{Icon mdi-playlist-plus}"
+                              Classes="Primary"
+                              Command="{Binding CreateCriteria}"/>
+            </FlexPanel>
+          </Panel>
+        </Card>
+
+        <Card Header="Datos del criterio"
+              IsVisible="{Binding HasSelectedCriterion}"
+              BootstrapGridPanel.Col="12"
+              BootstrapGridPanel.ColLg="7">
+          <FlexPanel Direction="Column"
+                     Gap="10"
+                     AlignItems="Stretch">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
+              <TextBox x:Name="NameTextBox" Grid.Column="1"
+                       TextInputOptions.ContentType="Normal"
+                       TextInputOptions.ReturnKeyType="Next"
+                       Text="{Binding SelectedNode.Criterion.Name}"/>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+              <TextBlock Text="Peso:" VerticalAlignment="Center"/>
+              <TextBox x:Name="WeightTextBox" Grid.Column="1"
+                       TextInputOptions.ContentType="Number"
+                       TextInputOptions.ReturnKeyType="Done"
+                       Text="{Binding SelectedNode.Criterion.Weight}"/>
+            </Grid>
+            <TextBlock Text="No se permite borrar un criterio con subcriterios."
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding SelectedCriterionHasChildren}"/>
+          </FlexPanel>
+        </Card>
+      </BootstrapGridPanel>
     </FlexPanel>
-    <Panel Grid.Row="1" Grid.Column="0">
-      <TreeView ItemsSource="{Binding Criteria}"
-                SelectedItem="{Binding SelectedNode}"
-                IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
-        <TreeView.ItemTemplate>
-          <TreeDataTemplate ItemsSource="{Binding Children}">
-            <TextBlock Text="{Binding Name}"/>
-          </TreeDataTemplate>
-        </TreeView.ItemTemplate>
-      </TreeView>
-      <StackPanel Margin="8"
-                  Spacing="8"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center"
-                  IsVisible="{Binding HasNoCriteriaForSelectedTerm}">
-        <TextBlock Text="Sin criterios para este trimestre"/>
-        <EnhancedButton Content="Crear criterios" Command="{Binding CreateCriteria}"/>
-      </StackPanel>
-    </Panel>
-    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
-      <TextBlock Text="Datos del criterio" FontWeight="Bold"/>
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
-        <TextBox x:Name="NameTextBox" Grid.Column="1"
-                 TextInputOptions.ContentType="Normal"
-                 TextInputOptions.ReturnKeyType="Next"
-                 Text="{Binding SelectedNode.Criterion.Name}"/>
-      </Grid>
-      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Peso:" VerticalAlignment="Center"/>
-        <TextBox x:Name="WeightTextBox" Grid.Column="1"
-                 TextInputOptions.ContentType="Number"
-                 TextInputOptions.ReturnKeyType="Done"
-                 Text="{Binding SelectedNode.Criterion.Weight}"/>
-      </Grid>
-      <TextBlock Text="No se permite borrar un criterio con subcriterios."/>
-    </StackPanel>
-  </Grid>
+  </ScrollViewer>
 </UserControl>

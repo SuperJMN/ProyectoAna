@@ -219,6 +219,46 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public void CriteriaViewModel_exposes_no_selection_state_for_empty_criteria()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutCriteria());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        Assert.True(viewModel.HasNoCriteriaForSelectedTerm);
+        Assert.False(viewModel.HasSelectedCriterion);
+        Assert.False(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.False(viewModel.SelectedCriterionHasChildren);
+    }
+
+    [Fact]
+    public async Task CriteriaViewModel_marks_selected_parent_as_not_deletable_after_adding_child()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRoot());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+
+        viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
+
+        await viewModel.AddChildCriterion.Execute();
+
+        Assert.True(viewModel.HasSelectedCriterion);
+        Assert.True(viewModel.SelectedCriterionHasChildren);
+        Assert.False(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.False(await viewModel.DeleteCriterion.CanExecute.FirstAsync());
+    }
+
+    [Fact]
     public async Task CriteriaViewModel_add_child_confirms_and_removes_parent_assessments_when_leaf_has_scores()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRootWithScoredLeafCriterion());
