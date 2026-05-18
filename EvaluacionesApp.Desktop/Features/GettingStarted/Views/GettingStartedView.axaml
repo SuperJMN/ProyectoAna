@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.GettingStarted"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="620"
+             x:Class="EvaluacionesApp.Desktop.Features.GettingStarted.GettingStartedView"
+             x:DataType="vm:IGettingStartedViewModel">
+    <Design.DataContext>
+        <vm:GettingStartedViewModelSample />
+    </Design.DataContext>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <FlexPanel Direction="Column"
+                   Gap="16"
+                   Margin="16"
+                   AlignItems="Stretch"
+                   MaxWidth="980">
+            <Card Header="¡Hola!"
+                  Subheader="Tu cuaderno docente para organizar cursos, clases, criterios y notas sin perder el hilo.">
+                <BootstrapGridPanel MaxColumns="12"
+                                    Gutter="16"
+                                    FluidContainer="True">
+                    <Image Source="avares://EvaluacionesApp.Desktop/Assets/logo.png"
+                           Stretch="Uniform"
+                           MaxHeight="150"
+                           HorizontalAlignment="Center"
+                           BootstrapGridPanel.Col="12"
+                           BootstrapGridPanel.ColMd="3" />
+                    <TextBlock Text="Aquí empieza el trabajo diario: prepara tus grupos, recoge evidencias, define criterios y revisa la evaluación con una estructura clara."
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center"
+                               BootstrapGridPanel.Col="12"
+                               BootstrapGridPanel.ColMd="9" />
+                </BootstrapGridPanel>
+            </Card>
+
+            <BootstrapGridPanel MaxColumns="12"
+                                Gutter="16"
+                                FluidContainer="True">
+                <Card Header="Primeros pasos"
+                      Subheader="{Binding SetupStatus}"
+                      BootstrapGridPanel.Col="12"
+                      BootstrapGridPanel.ColLg="7">
+                    <FlexPanel Direction="Column"
+                               Gap="12"
+                               AlignItems="Start">
+                        <TextBlock Text="El asistente inicial crea los cursos y clases de partida. Después puedes completar alumnos, criterios y notas desde sus secciones."
+                                   TextWrapping="Wrap" />
+                        <EnhancedButton Content="Iniciar asistente"
+                                        Icon="{Icon mdi-play-circle-outline}"
+                                        Classes="Primary"
+                                        Command="{Binding StartInitialSetup}"
+                                        IsVisible="{Binding CanStartInitialSetup}" />
+                        <EnhancedButton Content="Abrir cursos"
+                                        Icon="{Icon mdi-school}"
+                                        Classes="Secondary"
+                                        Command="{Binding OpenCourses}"
+                                        IsVisible="{Binding !CanStartInitialSetup}" />
+                    </FlexPanel>
+                </Card>
+
+                <Card Header="Continuar"
+                      Subheader="Accesos directos a las tareas habituales."
+                      BootstrapGridPanel.Col="12"
+                      BootstrapGridPanel.ColLg="5">
+                    <FlexPanel Direction="Column"
+                               Gap="8"
+                               AlignItems="Stretch">
+                        <EnhancedButton Content="Cursos"
+                                        Icon="{Icon mdi-school}"
+                                        Command="{Binding OpenCourses}" />
+                        <EnhancedButton Content="Clases"
+                                        Icon="{Icon mdi-google-classroom}"
+                                        Command="{Binding OpenClasses}" />
+                        <EnhancedButton Content="Criterios"
+                                        Icon="{Icon mdi-format-list-bulleted}"
+                                        Command="{Binding OpenCriteria}" />
+                    </FlexPanel>
+                </Card>
+            </BootstrapGridPanel>
+        </FlexPanel>
+    </ScrollViewer>
+</UserControl>

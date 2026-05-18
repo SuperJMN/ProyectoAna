@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="..\assets\logo.png" Link="Assets\logo.png" />
     <None Include="Assets\app.png" Link="icon.png" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Assets\app.svg" Link="icon.svg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

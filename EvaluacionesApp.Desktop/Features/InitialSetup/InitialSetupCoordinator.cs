@@ -19,7 +19,7 @@ public sealed class InitialSetupCoordinator
     private readonly InitialSetupApplicator applicator;
     private readonly IShell shell;
     private readonly INotificationService notifications;
-    private bool started;
+    private bool isRunning;
 
     public InitialSetupCoordinator(
         IDynamicSchoolStore store,
@@ -39,12 +39,22 @@ public sealed class InitialSetupCoordinator
 
     public async Task RunIfNeeded()
     {
-        if (started || store.Root.Courses.Count > 0)
+        if (store.Root.Courses.Count > 0)
         {
             return;
         }
 
-        started = true;
+        await Run();
+    }
+
+    public async Task Run()
+    {
+        if (isRunning || store.Root.Courses.Count > 0)
+        {
+            return;
+        }
+
+        isRunning = true;
 
         try
         {
@@ -60,6 +70,10 @@ public sealed class InitialSetupCoordinator
         catch (Exception ex)
         {
             await notifications.Show("No se pudo completar el asistente inicial", ex.Message);
+        }
+        finally
+        {
+            isRunning = false;
         }
     }
 

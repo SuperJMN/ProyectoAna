@@ -26,7 +26,7 @@ using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Criteria;
 
-[Section(name: "Criteria", icon: "mdi-format-list-bulleted", sortIndex: 4, FriendlyName = "Criterios")]
+[Section(name: "Criteria", icon: "mdi-format-list-bulleted", sortIndex: 5, FriendlyName = "Criterios")]
 public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 {
     private readonly CompositeDisposable anchors = new();

@@ -24,7 +24,7 @@ using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Students;
 
-[Section(name: "Students", icon: "mdi-account-group", sortIndex: 3, FriendlyName = "Alumnos")]
+[Section(name: "Students", icon: "mdi-account-group", sortIndex: 4, FriendlyName = "Alumnos")]
 public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());
