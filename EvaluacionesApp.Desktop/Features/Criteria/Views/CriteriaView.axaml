@@ -21,9 +21,9 @@
       </ComboBox>
       <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
       <ComboBox Width="120" ItemsSource="{Binding Terms}" SelectedItem="{Binding SelectedTerm}"/>
-      <EnhancedButton Content="Add Root" Command="{Binding AddRootCriterion}"/>
-      <EnhancedButton Content="Add Child" Command="{Binding AddChildCriterion}"/>
-      <EnhancedButton Content="Delete" Command="{Binding DeleteCriterion}"/>
+      <EnhancedButton Content="Añadir criterio principal" Command="{Binding AddRootCriterion}"/>
+      <EnhancedButton Content="Añadir subcriterio" Command="{Binding AddChildCriterion}"/>
+      <EnhancedButton Content="Eliminar" Command="{Binding DeleteCriterion}"/>
       <EnhancedButton Content="Crear criterios"
                       Command="{Binding CreateCriteria}"
                       IsVisible="{Binding HasNoCriteriaForSelectedTerm}"/>
@@ -53,16 +53,16 @@
       </StackPanel>
     </Panel>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
-      <TextBlock Text="Criterion details" FontWeight="Bold"/>
+      <TextBlock Text="Datos del criterio" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Name:" VerticalAlignment="Center"/>
+        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
         <TextBox x:Name="NameTextBox" Grid.Column="1"
                  TextInputOptions.ContentType="Normal"
                  TextInputOptions.ReturnKeyType="Next"
                  Text="{Binding SelectedNode.Criterion.Name}"/>
       </Grid>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Weight:" VerticalAlignment="Center"/>
+        <TextBlock Text="Peso:" VerticalAlignment="Center"/>
         <TextBox x:Name="WeightTextBox" Grid.Column="1"
                  TextInputOptions.ContentType="Number"
                  TextInputOptions.ReturnKeyType="Done"

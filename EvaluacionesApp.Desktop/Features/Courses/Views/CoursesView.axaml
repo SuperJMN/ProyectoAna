@@ -9,7 +9,7 @@
              x:DataType="vm:CoursesViewModel">
   <Grid ColumnDefinitions="2*,3*" RowDefinitions="Auto,*">
     <FlexPanel Grid.ColumnSpan="2" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
-      <EnhancedButton Content="Add Course" Command="{Binding AddCourse}"/>
+      <EnhancedButton Content="Añadir curso" Command="{Binding AddCourse}"/>
     </FlexPanel>
     <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
       <ListBox.ItemTemplate>
@@ -19,16 +19,16 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
-      <TextBlock Text="Course details" FontWeight="Bold"/>
+      <TextBlock Text="Datos del curso" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Name:" VerticalAlignment="Center"/>
+        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
         <TextBox Grid.Column="1"
                  TextInputOptions.ContentType="Normal"
                  TextInputOptions.ReturnKeyType="Next"
                  Text="{Binding SelectedCourse.Name}"/>
       </Grid>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Number:" VerticalAlignment="Center"/>
+        <TextBlock Text="Número:" VerticalAlignment="Center"/>
         <NumericUpDown Grid.Column="1"
                        Minimum="1"
                        Maximum="1000"

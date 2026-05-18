@@ -59,7 +59,35 @@ public sealed class ValidationViewModelTests
 
         var student = Assert.Single(viewModel.StudentsSelection.SelectedItems);
         Assert.Same(student, viewModel.SelectedStudent);
-        Assert.Equal("Student 2", student.FirstName);
+        Assert.Equal("Alumno 2", student.FirstName);
+    }
+
+    [Fact]
+    public async Task CoursesViewModel_creates_courses_with_teacher_facing_default_name()
+    {
+        using var store = RecordingSchoolStore.FromDomain(new Root());
+        using var viewModel = new CoursesViewModel(store, new NullNotificationService());
+
+        await viewModel.AddCourse.Execute();
+
+        Assert.Equal("Curso 1", viewModel.SelectedCourse!.Name);
+    }
+
+    [Fact]
+    public async Task ClassesViewModel_creates_classes_with_teacher_facing_default_name()
+    {
+        using var store = RecordingSchoolStore.FromDomain(new Root
+        {
+            Courses =
+            {
+                new Course { Id = "course-1", Name = "1 ESO", Terms = { 1 } }
+            }
+        });
+        using var viewModel = new ClassesViewModel(store, new NullNotificationService());
+
+        await viewModel.AddClass.Execute();
+
+        Assert.Equal("Clase 1", viewModel.SelectedClass!.Name);
     }
 
     [Fact]
@@ -93,12 +121,24 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
-    public void StudentsViewModel_selected_student_ignores_items_from_other_classes()
+    public void StudentsViewModel_uses_the_compact_selection_source_for_selection_model()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
-        var selectedStudent = viewModel.SelectedStudent;
-        var otherStudent = viewModel.Courses.Last().Classes.Single().Students.Single();
+
+        Assert.Same(viewModel.CompactSelectionStudents, viewModel.StudentsSelection.SelectionModel.Source);
+        Assert.Equal(viewModel.SelectedClass!.Students.Select(student => student.Id), viewModel.CompactSelectionStudents.Select(student => student.Id));
+    }
+
+    [Fact]
+    public void StudentsViewModel_selected_student_ignores_items_from_other_classes()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
+        using var viewModel = new StudentsViewModel(store, new NullNotificationService());
+        var selectedStudent = viewModel.SelectedStudent!;
+        var selectedClass = viewModel.SelectedClass!;
+        var otherClass = viewModel.SelectedCourse!.Classes.Single(cls => !ReferenceEquals(cls, selectedClass));
+        var otherStudent = Assert.Single(otherClass.Students);
 
         viewModel.SelectedStudent = otherStudent;
 
@@ -116,27 +156,37 @@ public sealed class ValidationViewModelTests
 
         var student = Assert.Single(viewModel.StudentsSelection.SelectedItems);
         Assert.Same(student, viewModel.SelectedStudent);
+        Assert.Contains(student, viewModel.CompactSelectionStudents);
+        Assert.Same(viewModel.CompactSelectionStudents, viewModel.StudentsSelection.SelectionModel.Source);
     }
 
     [Fact]
-    public void StudentsViewModel_resets_selection_mode_when_selected_class_changes()
+    public async Task StudentsViewModel_resets_selection_mode_when_selected_class_changes()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoClasses());
         using var viewModel = new StudentsViewModel(store, new NullNotificationService());
 
-        viewModel.EnterCompactSelectionMode.Execute().Subscribe();
+        await viewModel.EnterCompactSelectionMode.Execute();
         viewModel.SelectedClass = viewModel.SelectedCourse!.Classes[1];
 
         Assert.False(viewModel.IsCompactSelectionMode);
         Assert.NotNull(viewModel.SelectedStudent);
         Assert.Equal("student-2", viewModel.SelectedStudent!.Id);
+        Assert.Same(viewModel.CompactSelectionStudents, viewModel.StudentsSelection.SelectionModel.Source);
+        Assert.Equal(["student-2"], viewModel.CompactSelectionStudents.Select(student => student.Id));
     }
 
     [Fact]
     public async Task CriteriaViewModel_reports_error_when_selected_criterion_is_invalid()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
-        using var viewModel = new CriteriaViewModel(store, new ConfirmingDialog(), new NullNotificationService());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
 
         viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
         viewModel.SelectedNode!.Criterion.Name = "";
@@ -165,6 +215,7 @@ public sealed class ValidationViewModelTests
         var criterion = Assert.Single(viewModel.SelectedCourse!.Criteria);
         var node = Assert.Single(viewModel.Criteria);
         Assert.Same(criterion, node.Criterion);
+        Assert.Equal("Criterio 1", criterion.Name);
     }
 
     [Fact]
@@ -239,7 +290,8 @@ public sealed class ValidationViewModelTests
         await viewModel.AddChildCriterion.Execute();
 
         var parent = Assert.Single(viewModel.SelectedCourse!.Criteria);
-        Assert.Single(parent.Children);
+        var child = Assert.Single(parent.Children);
+        Assert.Equal("Subcriterio 1", child.Name);
         Assert.Equal(0, dialog.ShowCount);
     }
 

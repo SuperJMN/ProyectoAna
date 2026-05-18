@@ -70,7 +70,7 @@ public partial class CoursesViewModel : ReactiveValidationObject, IDisposable
     {
         var targetRoot = store.Root;
         var idx = targetRoot.Courses.Count + 1;
-        var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Course {idx}" });
+        var course = targetRoot.AddCourse(new Course { Id = $"course-{idx}", Name = $"Curso {idx}" });
         SelectedCourse = course;
         await ExecuteSave();
     }

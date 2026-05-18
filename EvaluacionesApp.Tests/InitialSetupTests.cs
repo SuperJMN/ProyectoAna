@@ -25,26 +25,26 @@ public sealed class InitialSetupTests
 
         Assert.Equal("Cursos", await wizard.CurrentStep!.Title.FirstAsync());
         Assert.Equal("Siguiente", await wizard.NextTitle.FirstAsync());
-        Assert.False(await wizard.Next.CanExecute.FirstAsync());
-        Assert.False(await wizard.Back.CanExecute.FirstAsync());
+        Assert.False(await wizard.Next.CanExecute.FirstAsync(canExecute => !canExecute));
+        Assert.False(await wizard.Back.CanExecute.FirstAsync(canExecute => !canExecute));
 
         var courses = Assert.IsType<InitialSetupCoursesStepViewModel>(wizard.CurrentStep.Content);
         courses.Courses.Single(course => course.Name == "1º ESO").IsSelected = true;
         courses.Courses.Single(course => course.Name == "2º Bachillerato").IsSelected = true;
 
-        Assert.True(await wizard.Next.CanExecute.FirstAsync());
+        Assert.True(await wizard.Next.CanExecute.FirstAsync(canExecute => canExecute));
 
         await wizard.Next.Execute();
 
         var classes = Assert.IsType<InitialSetupClassesStepViewModel>(wizard.CurrentStep!.Content);
         Assert.Equal("Clases", await wizard.CurrentStep.Title.FirstAsync());
-        Assert.True(await wizard.Back.CanExecute.FirstAsync());
-        Assert.False(await wizard.Next.CanExecute.FirstAsync());
+        Assert.True(await wizard.Back.CanExecute.FirstAsync(canExecute => canExecute));
+        Assert.False(await wizard.Next.CanExecute.FirstAsync(canExecute => !canExecute));
 
         classes.Courses.Single(course => course.CourseName == "1º ESO").Classes.Single(cls => cls.Name == "A").IsSelected = true;
         classes.Courses.Single(course => course.CourseName == "2º Bachillerato").Classes.Single(cls => cls.Name == "B").IsSelected = true;
 
-        Assert.True(await wizard.Next.CanExecute.FirstAsync());
+        Assert.True(await wizard.Next.CanExecute.FirstAsync(canExecute => canExecute));
     }
 
     [Fact]

@@ -97,7 +97,7 @@ public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
         }
 
         var idx = SelectedCourse.Classes.Count + 1;
-        var model = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Class {idx}" };
+        var model = new Class { Id = $"{SelectedCourse.Id}-class-{idx}", Name = $"Clase {idx}" };
         var cls = SelectedCourse.AddClass(model);
         SelectedClass = cls;
         await ExecuteSave();

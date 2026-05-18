@@ -16,7 +16,7 @@
           </DataTemplate>
         </ComboBox.ItemTemplate>
       </ComboBox>
-      <EnhancedButton Content="Add Class" Command="{Binding AddClass}"/>
+      <EnhancedButton Content="Añadir clase" Command="{Binding AddClass}"/>
     </FlexPanel>
     <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
       <ListBox.ItemTemplate>
@@ -26,9 +26,9 @@
       </ListBox.ItemTemplate>
     </ListBox>
     <StackPanel Grid.Row="1" Grid.Column="1" Margin="8" Spacing="8">
-      <TextBlock Text="Class details" FontWeight="Bold"/>
+      <TextBlock Text="Datos de la clase" FontWeight="Bold"/>
       <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6">
-        <TextBlock Text="Name:" VerticalAlignment="Center"/>
+        <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
         <TextBox Grid.Column="1"
                  TextInputOptions.ContentType="Normal"
                  TextInputOptions.ReturnKeyType="Done"

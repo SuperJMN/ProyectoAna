@@ -151,7 +151,7 @@
 
             <ListBox Margin="8"
                      IsVisible="{Binding IsCompactSelectionMode}"
-                     ItemsSource="{Binding SelectedClass.Students}"
+                     ItemsSource="{Binding CompactSelectionStudents}"
                      SelectionMode="Multiple"
                      Selection="{Binding StudentsSelection.SelectionModel}">
                 <ListBox.ItemTemplate>

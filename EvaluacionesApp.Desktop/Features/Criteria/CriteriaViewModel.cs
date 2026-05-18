@@ -246,7 +246,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         var model = new Criterion
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"Criterion {idx}",
+            Name = $"Criterio {idx}",
             Weight = 1,
             ClassId = string.Empty,
             Term = SelectedTerm
@@ -317,7 +317,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         var model = new Criterion
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"Subcriterion {idx}",
+            Name = $"Subcriterio {idx}",
             Weight = 1,
             ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? string.Empty : parent.ClassId,
             Term = parent.Term ?? SelectedTerm

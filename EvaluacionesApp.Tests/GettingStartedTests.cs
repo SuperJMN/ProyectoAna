@@ -93,12 +93,12 @@ public sealed class GettingStartedTests
 
             var courses = Assert.IsType<InitialSetupCoursesStepViewModel>(wizard.CurrentStep!.Content);
             courses.Courses.Single(course => course.Name == "1º ESO").IsSelected = true;
-            Assert.True(await wizard.Next.CanExecute.FirstAsync());
+            Assert.True(await wizard.Next.CanExecute.FirstAsync(canExecute => canExecute));
             await wizard.Next.Execute();
 
             var classes = Assert.IsType<InitialSetupClassesStepViewModel>(wizard.CurrentStep!.Content);
             classes.Courses.Single(course => course.CourseName == "1º ESO").Classes.Single(cls => cls.Name == "A").IsSelected = true;
-            Assert.True(await wizard.Next.CanExecute.FirstAsync());
+            Assert.True(await wizard.Next.CanExecute.FirstAsync(canExecute => canExecute));
             await wizard.Next.Execute();
 
             return true;

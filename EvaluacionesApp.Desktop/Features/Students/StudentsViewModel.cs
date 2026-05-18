@@ -50,6 +50,8 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private DynamicClass? selectedClass;
+    [Reactive(SetModifier = AccessModifier.Private)]
+    private IReadOnlyList<DynamicStudent> compactSelectionStudents = [];
     private DynamicStudent? selectedStudent;
     private bool syncingStudentSelection;
     private bool syncingSchoolSelection;
@@ -120,10 +122,10 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
                 .ThenByAscending(menu => menu.Header))
             .Subscribe()
             .DisposeWith(anchors);
-        _ = Load();
+        Load();
     }
 
-    async Task Load()
+    void Load()
     {
         root = store.Root;
         Courses = root.Courses;
@@ -144,7 +146,6 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .DisposeWith(anchors);
 
         SelectedCourse = ResolveCourse(selection.SelectedCourse);
-        await Task.CompletedTask;
     }
 
     void RegisterExistingCourses(DynamicRoot currentRoot)
@@ -266,7 +267,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         classAnchors = null;
 
         DisableCompactSelectionMode();
-        StudentsSelection.SelectionModel.Source = cls?.Students;
+        RefreshStudentsSelectionSource();
         SetSelectedStudent(null, false);
         SyncSelectionToSelectedStudent(null);
 
@@ -276,6 +277,10 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
 
         classAnchors = new CompositeDisposable();
+
+        cls.StudentsChanges
+            .Subscribe(_ => RefreshStudentsSelectionSource())
+            .DisposeWith(classAnchors);
 
         cls.StudentsChanges
             .AutoRefresh(s => s.FirstName)
@@ -305,8 +310,9 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
 
         var idx = SelectedClass.Students.Count + 1;
-        var model = new Student { Id = $"student-{idx}", FirstName = $"Student {idx}" };
+        var model = new Student { Id = $"student-{idx}", FirstName = $"Alumno {idx}" };
         var student = SelectedClass.AddStudent(model);
+        RefreshStudentsSelectionSource();
         SelectStudent(student);
         await ExecuteSave();
     }
@@ -498,6 +504,12 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
         }
     }
 
+    void RefreshStudentsSelectionSource()
+    {
+        CompactSelectionStudents = SelectedClass?.Students.ToArray() ?? [];
+        StudentsSelection.SelectionModel.Source = CompactSelectionStudents;
+    }
+
     void EnableCompactSelectionMode()
     {
         IsCompactSelectionMode = true;
@@ -535,6 +547,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             SelectedClass.RemoveStudent(student);
         }
 
+        RefreshStudentsSelectionSource();
         await ExecuteSave();
     }
 
@@ -564,6 +577,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
 
         SelectedCourse = target.Course;
         SelectedClass = target.Class;
+        RefreshStudentsSelectionSource();
 
         await ExecuteSave();
     }
