@@ -61,5 +61,6 @@
                      Link="%(RecursiveDir)%(Filename)%(Extension)" />
     <AvaloniaResource Include="..\EvaluacionesApp.Desktop\Assets\**"
                       Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\assets\logo.png" Link="Assets\logo.png" />
   </ItemGroup>
 </Project>

@@ -22,7 +22,7 @@
                 <BootstrapGridPanel MaxColumns="12"
                                     Gutter="16"
                                     FluidContainer="True">
-                    <Image Source="avares://EvaluacionesApp.Desktop/Assets/logo.png"
+                    <Image Source="/Assets/logo.png"
                            Stretch="Uniform"
                            MaxHeight="150"
                            HorizontalAlignment="Center"
