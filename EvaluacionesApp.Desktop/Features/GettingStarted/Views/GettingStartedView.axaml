@@ -16,55 +16,54 @@
                    Gap="16"
                    Margin="16"
                    AlignItems="Stretch"
+                   HorizontalAlignment="Center"
                    MaxWidth="980">
             <Card Header="¡Hola!"
-                  Subheader="Tu cuaderno docente para organizar cursos, clases, criterios y notas sin perder el hilo.">
-                <BootstrapGridPanel MaxColumns="12"
-                                    Gutter="16"
-                                    FluidContainer="True">
+                  Subheader="Tu cuaderno docente para organizar cursos, clases, criterios y notas sin perder el hilo."
+                  Theme="{StaticResource WrapGridCard}">
+                <Card.HeaderStartContent>
                     <Image Source="/Assets/logo.png"
                            Stretch="Uniform"
-                           MaxHeight="150"
-                           HorizontalAlignment="Center"
-                           BootstrapGridPanel.Col="12"
-                           BootstrapGridPanel.ColMd="3" />
-                    <TextBlock Text="Aquí empieza el trabajo diario: prepara tus grupos, recoge evidencias, define criterios y revisa la evaluación con una estructura clara."
-                               TextWrapping="Wrap"
-                               VerticalAlignment="Center"
-                               BootstrapGridPanel.Col="12"
-                               BootstrapGridPanel.ColMd="9" />
-                </BootstrapGridPanel>
+                           MaxHeight="82"
+                           MaxWidth="82" />
+                </Card.HeaderStartContent>
+                <TextBlock Text="Aquí empieza el trabajo diario: prepara tus grupos, recoge evidencias, define criterios y revisa la evaluación con una estructura clara."
+                           TextWrapping="Wrap" />
             </Card>
 
-            <BootstrapGridPanel MaxColumns="12"
-                                Gutter="16"
-                                FluidContainer="True">
-                <Card Header="Primeros pasos"
-                      Subheader="{Binding SetupStatus}"
-                      BootstrapGridPanel.Col="12"
-                      BootstrapGridPanel.ColLg="12">
+            <Card Header="Primeros pasos"
+                  Subheader="{Binding SetupStatus}"
+                  Theme="{StaticResource WrapGridCard}">
+                <FlexPanel Direction="Row"
+                           Wrap="Wrap"
+                           Gap="12"
+                           AlignItems="Center">
                     <FlexPanel Direction="Column"
-                               Gap="12"
-                               AlignItems="Start">
+                               Gap="8"
+                               FlexPanel.Grow="1"
+                               FlexPanel.Shrink="1"
+                               FlexPanel.Basis="320">
                         <TextBlock Text="{Binding NextSetupStepTitle}"
                                    FontSize="18"
                                    FontWeight="SemiBold"
                                    TextWrapping="Wrap" />
                         <TextBlock Text="{Binding NextSetupStepMessage}"
                                    TextWrapping="Wrap" />
-                        <EnhancedButton Content="Iniciar asistente"
-                                        Icon="{Icon mdi-wizard-hat}"
-                                        Classes="Primary"
-                                        Command="{Binding StartInitialSetup}"
-                                        IsVisible="{Binding CanStartInitialSetup}" />
-                        <EnhancedButton Content="{Binding NextSetupActionText}"
-                                        Icon="{Icon mdi-arrow-right-circle-outline}"
-                                        Classes="Primary"
-                                        Command="{Binding OpenNextSetupStep}"
-                                        IsVisible="{Binding !CanStartInitialSetup}" />
                     </FlexPanel>
-                </Card>
-            </BootstrapGridPanel>
+                    <EnhancedButton Content="Iniciar asistente"
+                                    Icon="{Icon mdi-wizard-hat}"
+                                    Classes="Primary"
+                                    Command="{Binding StartInitialSetup}"
+                                    IsVisible="{Binding CanStartInitialSetup}"
+                                    FlexPanel.Shrink="0" />
+                    <EnhancedButton Content="{Binding NextSetupActionText}"
+                                    Icon="{Icon mdi-arrow-right-circle-outline}"
+                                    Classes="Primary"
+                                    Command="{Binding OpenNextSetupStep}"
+                                    IsVisible="{Binding !CanStartInitialSetup}"
+                                    FlexPanel.Shrink="0" />
+                </FlexPanel>
+            </Card>
         </FlexPanel>
     </ScrollViewer>
 </UserControl>

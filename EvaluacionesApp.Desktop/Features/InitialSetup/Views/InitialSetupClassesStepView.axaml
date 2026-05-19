@@ -3,10 +3,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.InitialSetup"
-             mc:Ignorable="d" d:DesignWidth="560" d:DesignHeight="360"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="320"
              x:Class="EvaluacionesApp.Desktop.Features.InitialSetup.Views.InitialSetupClassesStepView"
              x:DataType="vm:InitialSetupClassesStepViewModel"
-             Padding="20">
+             MinWidth="560"
+             Padding="16">
     <Design.DataContext>
         <vm:InitialSetupClassesStepViewModel />
     </Design.DataContext>
@@ -17,23 +18,30 @@
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <FlexPanel Direction="Column"
-                               Gap="14"
+                               Gap="12"
                                AlignItems="Stretch" />
                 </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:InitialSetupCourseClassesViewModel">
-                    <FlexPanel Direction="Column"
-                               Gap="6"
-                               AlignItems="Stretch">
+                    <FlexPanel Direction="Row"
+                               Wrap="Wrap"
+                               Gap="8"
+                               AlignItems="Center">
                         <TextBlock Text="{Binding CourseName}"
-                                   FontWeight="SemiBold" />
-                        <ItemsControl ItemsSource="{Binding Classes}">
+                                   FontWeight="SemiBold"
+                                   MinWidth="130"
+                                   FlexPanel.Shrink="0" />
+                        <ItemsControl ItemsSource="{Binding Classes}"
+                                      FlexPanel.Grow="1"
+                                      FlexPanel.Shrink="1"
+                                      FlexPanel.Basis="320">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <FlexPanel Wrap="Wrap"
                                                Gap="8"
-                                               AlignItems="Start" />
+                                               JustifyContent="SpaceBetween"
+                                               AlignItems="Center" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>

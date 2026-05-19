@@ -1,14 +1,16 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dialogs="clr-namespace:Zafiro.Avalonia.Dialogs.Views;assembly=Zafiro.Avalonia.Dialogs"
-        xmlns:graph="clr-namespace:Zafiro.Avalonia.Wizards.Graph.View;assembly=Zafiro.Avalonia">
+        xmlns:graph="clr-namespace:Zafiro.Avalonia.Wizards.Graph.View;assembly=Zafiro.Avalonia"
+        xmlns:core="clr-namespace:Zafiro.Avalonia.Wizards.Graph.Core;assembly=Zafiro.Avalonia">
 
-    <Style Selector="dialogs|DialogControl graph|GraphWizardView ContentControl#FooterContainer">
-        <Setter Property="IsVisible" Value="False" />
-    </Style>
-
-    <Style Selector="dialogs|DialogControl graph|GraphWizardView ContentControl#HeaderContainer">
-        <Setter Property="IsVisible" Value="False" />
+    <Style Selector="dialogs|DialogControl graph|GraphWizardView">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <TransitioningContentControl x:DataType="core:IGraphWizard"
+                                             Content="{Binding CurrentStep.Content}" />
+            </ControlTemplate>
+        </Setter>
     </Style>
 
     <Styles.Resources>

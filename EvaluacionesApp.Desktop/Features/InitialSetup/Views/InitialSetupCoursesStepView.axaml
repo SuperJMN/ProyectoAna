@@ -3,10 +3,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:EvaluacionesApp.Desktop.Features.InitialSetup"
-             mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="260"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="240"
              x:Class="EvaluacionesApp.Desktop.Features.InitialSetup.Views.InitialSetupCoursesStepView"
              x:DataType="vm:InitialSetupCoursesStepViewModel"
-             Padding="20">
+             MinWidth="560"
+             Padding="16">
     <Design.DataContext>
         <vm:InitialSetupCoursesStepViewModel />
     </Design.DataContext>
@@ -14,28 +15,30 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <FlexPanel Direction="Column"
-                   Gap="12"
+                   Gap="14"
                    AlignItems="Stretch">
             <TextBlock Text="Selecciona los cursos que impartes"
+                       FontWeight="SemiBold"
                        TextWrapping="Wrap" />
             <ItemsControl ItemsSource="{Binding Courses}">
                 <ItemsControl.ItemContainerTheme>
                     <ControlTheme TargetType="ContentPresenter">
                         <Setter Property="BootstrapGridPanel.Col" Value="12" />
-                        <Setter Property="BootstrapGridPanel.ColSm" Value="6" />
+                        <Setter Property="BootstrapGridPanel.ColSm" Value="4" />
                     </ControlTheme>
                 </ItemsControl.ItemContainerTheme>
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <BootstrapGridPanel MaxColumns="12"
-                                            Gutter="8"
+                                            Gutter="10"
                                             FluidContainer="True" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:InitialSetupCourseOptionViewModel">
                         <CheckBox Content="{Binding Name}"
-                                  IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch" />
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
