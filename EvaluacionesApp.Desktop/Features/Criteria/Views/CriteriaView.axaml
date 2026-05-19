@@ -13,42 +13,45 @@
                Gap="12"
                Margin="8"
                AlignItems="Stretch">
-      <FlexPanel Wrap="Wrap"
-                 Gap="8"
-                 AlignItems="Center">
-        <TextBlock Text="Curso:" VerticalAlignment="Center"/>
+      <BootstrapGridPanel MaxColumns="12"
+                          Gutter="8"
+                          FluidContainer="True">
+        <TextBlock Text="Curso:"
+                   VerticalAlignment="Center"
+                   BootstrapGridPanel.Col="12"
+                   BootstrapGridPanel.ColMd="2"/>
         <ComboBox MinWidth="180"
-                  MaxWidth="280"
-                  FlexPanel.Grow="1"
-                  FlexPanel.Basis="180"
                   ItemsSource="{Binding Courses}"
-                  SelectedItem="{Binding SelectedCourse}">
+                  SelectedItem="{Binding SelectedCourse}"
+                  HorizontalAlignment="Stretch"
+                  BootstrapGridPanel.Col="12"
+                  BootstrapGridPanel.ColMd="5">
           <ComboBox.ItemTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding Name}"/>
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>
-        <TextBlock Text="Trimestre:" VerticalAlignment="Center"/>
-        <ComboBox MinWidth="120"
-                  FlexPanel.Basis="120"
+        <TextBlock Text="Trimestre:"
+                   VerticalAlignment="Center"
+                   BootstrapGridPanel.Col="12"
+                   BootstrapGridPanel.ColMd="2"/>
+        <ComboBox
                   ItemsSource="{Binding Terms}"
-                  SelectedItem="{Binding SelectedTerm}"/>
-      </FlexPanel>
+                  SelectedItem="{Binding SelectedTerm}"
+                  HorizontalAlignment="Stretch"
+                  BootstrapGridPanel.Col="12"
+                  BootstrapGridPanel.ColMd="3"/>
+      </BootstrapGridPanel>
 
       <FlexPanel Wrap="Wrap"
                  Gap="8"
                  AlignItems="Center">
-        <EnhancedButton Content="Añadir criterio"
+        <EnhancedButton Content="Nuevo criterio raíz"
                         Icon="{Icon mdi-plus-circle-outline}"
                         Classes="Primary"
                         Command="{Binding AddRootCriterion}"
                         IsVisible="{Binding ShowAddRootCriterionAction}"/>
-        <EnhancedButton Content="Subcriterio"
-                        Icon="{Icon mdi-playlist-plus}"
-                        Classes="Secondary"
-                        Command="{Binding AddChildCriterion}"
-                        IsVisible="{Binding ShowAddChildCriterionAction}"/>
         <EnhancedButton Content="Copiar criterios"
                         Icon="{Icon mdi-content-copy}"
                         Classes="Secondary"
@@ -73,10 +76,26 @@
           <Panel MinHeight="260">
             <TreeView ItemsSource="{Binding Criteria}"
                       SelectedItem="{Binding SelectedNode}"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       IsVisible="{Binding !HasNoCriteriaForSelectedTerm}">
               <TreeView.ItemTemplate>
                 <TreeDataTemplate ItemsSource="{Binding Children}">
-                  <TextBlock Text="{Binding Name}"/>
+                  <WrapGrid ColumnSpacing="8"
+                            RowSpacing="8">
+                    <TextBlock Text="{Binding Name}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center"
+                               WrapGrid.PreferredWidth="*"
+                               WrapGrid.WrapMinWidth="120"
+                               WrapGrid.FillWidth="*"/>
+                    <EnhancedButton Content="Añadir subcriterio"
+                                    Icon="{Icon mdi-playlist-plus}"
+                                    Classes="Secondary"
+                                    Command="{Binding ElementName=CriteriaViewRoot, Path=DataContext.AddChildCriterionToNode}"
+                                    CommandParameter="{Binding}"
+                                    WrapGrid.PreferredWidth="Auto"
+                                    WrapGrid.FillWidth="*"/>
+                  </WrapGrid>
                 </TreeDataTemplate>
               </TreeView.ItemTemplate>
             </TreeView>
@@ -89,15 +108,15 @@
                        IsVisible="{Binding HasNoCriteriaForSelectedTerm}">
               <TextBlock Text="Sin criterios para este trimestre"
                          TextAlignment="Center"/>
-              <TextBlock Text="Crea una estructura inicial para empezar a evaluar esta parte del curso."
+              <TextBlock Text="Crea el primer criterio raíz para empezar a evaluar esta parte del curso."
                          TextWrapping="Wrap"
                          TextAlignment="Center"
                          MaxWidth="360"/>
-              <EnhancedButton Content="Crear criterios"
-                              Icon="{Icon mdi-playlist-plus}"
+              <EnhancedButton Content="Nuevo criterio raíz"
+                              Icon="{Icon mdi-plus-circle-outline}"
                               Classes="Primary"
-                              Command="{Binding CreateCriteria}"
-                              IsVisible="{Binding ShowCreateCriteriaAction}"/>
+                              Command="{Binding AddRootCriterion}"
+                              IsVisible="{Binding ShowAddRootCriterionAction}"/>
             </FlexPanel>
           </Panel>
         </Card>
@@ -109,20 +128,30 @@
           <FlexPanel Direction="Column"
                      Gap="10"
                      AlignItems="Stretch">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-              <TextBlock Text="Nombre:" VerticalAlignment="Center"/>
-              <TextBox x:Name="NameTextBox" Grid.Column="1"
+            <BootstrapGridPanel MaxColumns="12"
+                                Gutter="8"
+                                FluidContainer="True">
+              <TextBlock Text="Nombre:"
+                         VerticalAlignment="Center"
+                         BootstrapGridPanel.Col="12"
+                         BootstrapGridPanel.ColMd="2"/>
+              <TextBox x:Name="NameTextBox"
                        TextInputOptions.ContentType="Normal"
                        TextInputOptions.ReturnKeyType="Next"
-                       Text="{Binding SelectedNode.Criterion.Name}"/>
-            </Grid>
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-              <TextBlock Text="Peso:" VerticalAlignment="Center"/>
-              <TextBox x:Name="WeightTextBox" Grid.Column="1"
+                       Text="{Binding SelectedNode.Criterion.Name}"
+                       BootstrapGridPanel.Col="12"
+                       BootstrapGridPanel.ColMd="10"/>
+              <TextBlock Text="Peso:"
+                         VerticalAlignment="Center"
+                         BootstrapGridPanel.Col="12"
+                         BootstrapGridPanel.ColMd="2"/>
+              <TextBox x:Name="WeightTextBox"
                        TextInputOptions.ContentType="Number"
                        TextInputOptions.ReturnKeyType="Done"
-                       Text="{Binding SelectedNode.Criterion.Weight}"/>
-            </Grid>
+                       Text="{Binding SelectedNode.Criterion.Weight}"
+                       BootstrapGridPanel.Col="12"
+                       BootstrapGridPanel.ColMd="10"/>
+            </BootstrapGridPanel>
             <TextBlock Text="No se permite borrar un criterio con subcriterios."
                        TextWrapping="Wrap"
                        IsVisible="{Binding SelectedCriterionHasChildren}"/>

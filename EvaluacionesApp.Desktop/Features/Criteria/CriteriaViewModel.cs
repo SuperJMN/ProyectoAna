@@ -8,7 +8,6 @@ using System.Reactive.Disposables;
 using System.Reactive.Disposables.Fluent;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using CSharpFunctionalExtensions;
 using DynamicData;
 using DynamicData.Binding;
 using EvaluacionesApp.Desktop.Dynamic;
@@ -21,7 +20,6 @@ using ReactiveUI.Validation.Extensions;
 using ReactiveUI.Validation.Helpers;
 using Zafiro.Avalonia.Dialogs;
 using Zafiro.UI;
-using Zafiro.UI.Commands;
 using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Criteria;
@@ -34,9 +32,9 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
     private readonly IDynamicSchoolStore store;
     private readonly INotificationService notifications;
     private readonly CriteriaCopyFeatureViewModel copyFeature;
-    private readonly CriteriaQuickSetupApplicator criteriaQuickSetup;
     private readonly DynamicRoot root;
     private readonly IScheduler scheduler;
+    private string? criterionIdToSelectAfterRebuild;
 
     [Reactive] private DynamicCourse? selectedCourse;
     [Reactive] private ScopedCriterionNode? selectedNode;
@@ -55,7 +53,6 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         this.store = store;
         this.dialogService = dialogService;
         this.notifications = notifications;
-        criteriaQuickSetup = new CriteriaQuickSetupApplicator(store);
         this.scheduler = scheduler ?? RxSchedulers.MainThreadScheduler;
         var refreshInterval = criteriaRefreshInterval ?? TimeSpan.FromMilliseconds(100);
         var saveInterval = autoSaveInterval ?? TimeSpan.FromMilliseconds(400);
@@ -88,6 +85,8 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
         void RebuildCriteria(DynamicCourse? course, int term)
         {
+            var selectionId = criterionIdToSelectAfterRebuild ?? SelectedNode?.Criterion.Id;
+            criterionIdToSelectAfterRebuild = null;
             criteriaCollection.Clear();
             if (course != null)
             {
@@ -98,10 +97,9 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
                     criteriaCollection.Add(node);
             }
 
-            if (criteriaCollection.Count == 0)
-            {
-                SelectedNode = null;
-            }
+            SelectedNode = selectionId == null
+                ? criteriaCollection.FirstOrDefault()
+                : FindNode(criteriaCollection, selectionId) ?? criteriaCollection.FirstOrDefault();
 
             RaiseCriteriaActionStateChanged();
             RaiseSelectedCriterionStateChanged();
@@ -188,12 +186,8 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
         AddRootCriterion = ReactiveCommand.CreateFromTask(DoAddRootCriterion, hasCourse);
         AddChildCriterion = ReactiveCommand.CreateFromTask(DoAddChildCriterion, hasCriterion);
+        AddChildCriterionToNode = ReactiveCommand.CreateFromTask<ScopedCriterionNode>(DoAddChildCriterion, hasCourse);
         DeleteCriterion = ReactiveCommand.CreateFromTask(DoDeleteCriterion, canDeleteCriterion);
-        var canCreateCriteria = this.WhenAnyValue(
-            x => x.SelectedCourse,
-            x => x.HasNoCriteriaForSelectedTerm,
-            (course, hasNoCriteria) => course != null && hasNoCriteria);
-        CreateCriteria = ReactiveCommand.CreateFromTask(DoCreateCriteria, canCreateCriteria);
         this.ValidationRule(x => x.SelectedCriterionNameValid, isValid => isValid, "El nombre del criterio no puede estar vacio");
         this.ValidationRule(x => x.SelectedCriterionWeightValid, isValid => isValid, "El peso del criterio no puede ser negativo");
         ObserveSelectedCriterionChanges()
@@ -202,9 +196,6 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
         Save = ReactiveCommand.CreateFromTask(ExecuteSave, ValidationContext.Valid);
         Save.ThrownExceptions
             .Subscribe(ex => _ = this.notifications.Show("No se pudieron guardar los criterios", ex.Message))
-            .DisposeWith(anchors);
-        CreateCriteria.ThrownExceptions
-            .Subscribe(ex => _ = this.notifications.Show("No se pudieron crear los criterios", ex.Message))
             .DisposeWith(anchors);
 
         var criteriaObservable = this.WhenAnyValue(x => x.Criteria)
@@ -240,9 +231,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
     public bool HasNoCriteriaForSelectedTerm => SelectedCourse != null && Criteria.Count == 0;
 
-    public bool ShowCreateCriteriaAction => SelectedCourse != null && HasNoCriteriaForSelectedTerm;
-
-    public bool ShowAddRootCriterionAction => SelectedCourse != null && !HasNoCriteriaForSelectedTerm;
+    public bool ShowAddRootCriterionAction => SelectedCourse != null;
 
     public bool HasCopyCriteriaTargets => copyFeature.HasCopyCriteriaTargets;
 
@@ -260,8 +249,8 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
 
     public ReactiveCommand<Unit, Unit> AddRootCriterion { get; }
     public ReactiveCommand<Unit, Unit> AddChildCriterion { get; }
+    public ReactiveCommand<ScopedCriterionNode, Unit> AddChildCriterionToNode { get; }
     public ReactiveCommand<Unit, Unit> DeleteCriterion { get; }
-    public ReactiveCommand<Unit, Unit> CreateCriteria { get; }
     public ReactiveCommand<Unit, Unit> Save { get; }
 
     public bool SelectedCriterionNameValid
@@ -295,49 +284,20 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
             ClassId = string.Empty,
             Term = SelectedTerm
         };
+        criterionIdToSelectAfterRebuild = model.Id;
         SelectedCourse.AddCriterion(model);
         await ExecuteSave();
     }
 
-    private async Task DoCreateCriteria()
+    private Task DoAddChildCriterion()
     {
-        if (SelectedCourse == null || !HasNoCriteriaForSelectedTerm)
-        {
-            return;
-        }
-
-        var setup = new CriteriaQuickSetupViewModel();
-        var result = await dialogService.ShowAndGetResult(
-            setup,
-            setup.Title,
-            CreateCriteriaOptions,
-            vm => vm.CriteriaNames);
-
-        if (result.HasNoValue)
-        {
-            return;
-        }
-
-        await criteriaQuickSetup.Apply(SelectedCourse, SelectedTerm, result.Value);
+        return DoAddChildCriterion(SelectedNode);
     }
 
-    static IEnumerable<IOption> CreateCriteriaOptions(CriteriaQuickSetupViewModel setup, ICloseable closeable)
+    private async Task DoAddChildCriterion(ScopedCriterionNode? selectedNode)
     {
-        var cancel = ReactiveCommand.Create(closeable.Dismiss).Enhance("Cancelar");
-        var create = ReactiveCommand.Create(closeable.Close, setup.IsValid).Enhance("Crear");
+        if (SelectedCourse == null || selectedNode?.Criterion == null) return;
 
-        return
-        [
-            new Zafiro.Avalonia.Dialogs.Option("Cancelar", cancel, new Settings { IsCancel = true, Role = OptionRole.Cancel }),
-            new Zafiro.Avalonia.Dialogs.Option("Crear", create, new Settings { IsDefault = true, Role = OptionRole.Primary })
-        ];
-    }
-
-    private async Task DoAddChildCriterion()
-    {
-        if (SelectedCourse == null || SelectedNode?.Criterion == null) return;
-
-        var selectedNode = SelectedNode;
         var parent = selectedNode.Criterion;
         if (selectedNode.Children.Count == 0)
         {
@@ -366,6 +326,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
             ClassId = string.IsNullOrWhiteSpace(parent.ClassId) ? string.Empty : parent.ClassId,
             Term = parent.Term ?? SelectedTerm
         };
+        criterionIdToSelectAfterRebuild = model.Id;
         parent.AddChild(model);
         await ExecuteSave();
     }
@@ -478,10 +439,16 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
     void RaiseCriteriaActionStateChanged()
     {
         this.RaisePropertyChanged(nameof(HasNoCriteriaForSelectedTerm));
-        this.RaisePropertyChanged(nameof(ShowCreateCriteriaAction));
         this.RaisePropertyChanged(nameof(ShowAddRootCriterionAction));
         this.RaisePropertyChanged(nameof(HasCopyCriteriaTargets));
         this.RaisePropertyChanged(nameof(ShowCopyCriteriaAction));
+    }
+
+    static ScopedCriterionNode? FindNode(IEnumerable<ScopedCriterionNode> nodes, string criterionId)
+    {
+        return nodes
+            .SelectMany(node => node.SelfAndDescendants())
+            .FirstOrDefault(node => node.Criterion.Id == criterionId);
     }
 
     static bool HasText(string? value) => !string.IsNullOrWhiteSpace(value);

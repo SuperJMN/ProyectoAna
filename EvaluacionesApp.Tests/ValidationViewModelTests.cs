@@ -363,6 +363,27 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
+    public async Task CriteriaViewModel_selects_root_criterion_after_add()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoCriteria());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+        var initialRoot = viewModel.Criteria.Single(node => node.Criterion.Id == "criterion-1");
+        viewModel.SelectedNode = initialRoot;
+
+        await viewModel.AddRootCriterion.Execute();
+
+        var created = viewModel.SelectedCourse!.Criteria.Single(criterion => criterion.Name == "Criterio 3");
+        Assert.NotNull(viewModel.SelectedNode);
+        Assert.Same(created, viewModel.SelectedNode!.Criterion);
+    }
+
+    [Fact]
     public void CriteriaViewModel_exposes_no_selection_state_for_empty_criteria()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRootWithoutCriteria());
@@ -375,8 +396,7 @@ public sealed class ValidationViewModelTests
             TimeSpan.Zero);
 
         Assert.True(viewModel.HasNoCriteriaForSelectedTerm);
-        Assert.True(viewModel.ShowCreateCriteriaAction);
-        Assert.False(viewModel.ShowAddRootCriterionAction);
+        Assert.True(viewModel.ShowAddRootCriterionAction);
         Assert.False(viewModel.ShowCopyCriteriaAction);
         Assert.False(viewModel.HasSelectedCriterion);
         Assert.False(viewModel.ShowAddChildCriterionAction);
@@ -445,7 +465,7 @@ public sealed class ValidationViewModelTests
     }
 
     [Fact]
-    public async Task CriteriaViewModel_marks_selected_parent_as_not_deletable_after_adding_child()
+    public async Task CriteriaViewModel_selects_child_after_adding_it_to_selected_parent()
     {
         using var store = RecordingSchoolStore.FromDomain(CreateRoot());
         using var viewModel = new CriteriaViewModel(
@@ -460,12 +480,39 @@ public sealed class ValidationViewModelTests
 
         await viewModel.AddChildCriterion.Execute();
 
+        var parent = Assert.Single(viewModel.SelectedCourse!.Criteria);
+        var child = Assert.Single(parent.Children);
+        Assert.Same(child, viewModel.SelectedNode!.Criterion);
         Assert.True(viewModel.HasSelectedCriterion);
         Assert.True(viewModel.ShowAddChildCriterionAction);
-        Assert.True(viewModel.SelectedCriterionHasChildren);
-        Assert.False(viewModel.SelectedCriterionCanBeDeleted);
-        Assert.False(viewModel.ShowDeleteCriterionAction);
-        Assert.False(await viewModel.DeleteCriterion.CanExecute.FirstAsync());
+        Assert.False(viewModel.SelectedCriterionHasChildren);
+        Assert.True(viewModel.SelectedCriterionCanBeDeleted);
+        Assert.True(viewModel.ShowDeleteCriterionAction);
+        Assert.True(await viewModel.DeleteCriterion.CanExecute.FirstAsync());
+    }
+
+    [Fact]
+    public async Task CriteriaViewModel_adds_child_to_context_node_and_selects_new_child()
+    {
+        using var store = RecordingSchoolStore.FromDomain(CreateRootWithTwoCriteria());
+        using var viewModel = new CriteriaViewModel(
+            store,
+            new ConfirmingDialog(),
+            new NullNotificationService(),
+            ImmediateScheduler.Instance,
+            TimeSpan.Zero,
+            TimeSpan.Zero);
+        var firstRoot = viewModel.Criteria.Single(node => node.Criterion.Id == "criterion-1");
+        var secondRoot = viewModel.Criteria.Single(node => node.Criterion.Id == "criterion-2");
+        viewModel.SelectedNode = firstRoot;
+
+        await viewModel.AddChildCriterionToNode.Execute(secondRoot);
+
+        Assert.Empty(firstRoot.Criterion.Children);
+        var created = Assert.Single(secondRoot.Criterion.Children);
+        Assert.Equal("Subcriterio 1", created.Name);
+        Assert.NotNull(viewModel.SelectedNode);
+        Assert.Same(created, viewModel.SelectedNode!.Criterion);
     }
 
     [Fact]
@@ -483,7 +530,6 @@ public sealed class ValidationViewModelTests
         viewModel.SelectedNode = Assert.Single(viewModel.Criteria);
 
         Assert.False(viewModel.HasNoCriteriaForSelectedTerm);
-        Assert.False(viewModel.ShowCreateCriteriaAction);
         Assert.True(viewModel.ShowAddRootCriterionAction);
         Assert.True(viewModel.ShowCopyCriteriaAction);
         Assert.True(viewModel.ShowAddChildCriterionAction);
@@ -676,6 +722,35 @@ public sealed class ValidationViewModelTests
                             {
                                 new Student { Id = "student-1", FirstName = "Ana", LastName = "Garcia" }
                             }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    static Root CreateRootWithTwoCriteria()
+    {
+        return new Root
+        {
+            Courses =
+            {
+                new Course
+                {
+                    Id = "course-1",
+                    Name = "1 ESO",
+                    Terms = { 1 },
+                    Criteria =
+                    {
+                        new Criterion { Id = "criterion-1", Name = "Criterion 1", Weight = 1m, Term = 1 },
+                        new Criterion { Id = "criterion-2", Name = "Criterion 2", Weight = 1m, Term = 1 }
+                    },
+                    Classes =
+                    {
+                        new Class
+                        {
+                            Id = "class-a",
+                            Name = "A"
                         }
                     }
                 }
