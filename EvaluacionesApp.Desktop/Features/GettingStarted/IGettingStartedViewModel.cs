@@ -21,9 +21,4 @@ public interface IGettingStartedViewModel
     string NextSetupActionText { get; }
     IEnhancedCommand<Unit> StartInitialSetup { get; }
     IEnhancedCommand<Unit> OpenNextSetupStep { get; }
-    IEnhancedCommand<Unit> OpenCourses { get; }
-    IEnhancedCommand<Unit> OpenClasses { get; }
-    IEnhancedCommand<Unit> OpenStudents { get; }
-    IEnhancedCommand<Unit> OpenCriteria { get; }
-    IEnhancedCommand<Unit> OpenGrades { get; }
 }

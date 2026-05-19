@@ -21,7 +21,7 @@ using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Grades;
 
-[Section(name: "Grades", icon: "mdi-numeric-3-box-multiple", sortIndex: 6, FriendlyName = "Notas")]
+[Section(name: "Grades", icon: "mdi-table-edit", sortIndex: 6, FriendlyName = "Notas")]
 public partial class GradesViewModel : ReactiveObject, IDisposable
 {
     private readonly IDynamicSchoolStore store;

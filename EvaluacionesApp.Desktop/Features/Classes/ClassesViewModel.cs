@@ -19,7 +19,7 @@ using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.Classes;
 
-[Section(name: "Classes", icon: "mdi-google-classroom", sortIndex: 3, FriendlyName = "Clases")]
+[Section(name: "Classes", icon: "mdi-human-male-board", sortIndex: 3, FriendlyName = "Clases")]
 public partial class ClassesViewModel : ReactiveValidationObject, IDisposable
 {
     private static readonly ReadOnlyObservableCollection<DynamicCourse> EmptyCourses = new(new ObservableCollection<DynamicCourse>());

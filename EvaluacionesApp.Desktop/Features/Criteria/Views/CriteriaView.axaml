@@ -48,7 +48,7 @@
                  Gap="8"
                  AlignItems="Center">
         <EnhancedButton Content="Nuevo criterio raíz"
-                        Icon="{Icon mdi-plus-circle-outline}"
+                        Icon="{Icon mdi-shape-plus-outline}"
                         Classes="Primary"
                         Command="{Binding AddRootCriterion}"
                         IsVisible="{Binding ShowAddRootCriterionAction}"/>
@@ -89,7 +89,7 @@
                                WrapGrid.WrapMinWidth="120"
                                WrapGrid.FillWidth="*"/>
                     <EnhancedButton Content="Añadir subcriterio"
-                                    Icon="{Icon mdi-playlist-plus}"
+                                    Icon="{Icon mdi-file-tree-outline}"
                                     Classes="Secondary"
                                     Command="{Binding ElementName=CriteriaViewRoot, Path=DataContext.AddChildCriterionToNode}"
                                     CommandParameter="{Binding}"
@@ -113,7 +113,7 @@
                          TextAlignment="Center"
                          MaxWidth="360"/>
               <EnhancedButton Content="Nuevo criterio raíz"
-                              Icon="{Icon mdi-plus-circle-outline}"
+                              Icon="{Icon mdi-shape-plus-outline}"
                               Classes="Primary"
                               Command="{Binding AddRootCriterion}"
                               IsVisible="{Binding ShowAddRootCriterionAction}"/>

@@ -17,7 +17,7 @@ using Zafiro.UI.Shell.Utils;
 
 namespace EvaluacionesApp.Desktop.Features.GettingStarted;
 
-[Section(name: "Home", icon: "mdi-home", sortIndex: 0, FriendlyName = "Inicio")]
+[Section(name: "Home", icon: "mdi-home-outline", sortIndex: 0, FriendlyName = "Inicio")]
 public partial class GettingStartedViewModel : ReactiveObject, IGettingStartedViewModel, IDisposable
 {
     private readonly InitialSetupCoordinator initialSetup;
@@ -82,11 +82,6 @@ public partial class GettingStartedViewModel : ReactiveObject, IGettingStartedVi
             .Enhance("Iniciar asistente");
 
         OpenNextSetupStep = ReactiveCommand.CreateFromTask(DoOpenNextSetupStep).Enhance("Continuar");
-        OpenCourses = ReactiveCommand.Create(() => this.shell.GoToSection("Courses")).Enhance("Abrir cursos");
-        OpenClasses = ReactiveCommand.Create(() => this.shell.GoToSection("Classes")).Enhance("Abrir clases");
-        OpenStudents = ReactiveCommand.Create(() => this.shell.GoToSection("Students")).Enhance("Abrir alumnos");
-        OpenCriteria = ReactiveCommand.Create(() => this.shell.GoToSection("Criteria")).Enhance("Abrir criterios");
-        OpenGrades = ReactiveCommand.Create(() => this.shell.GoToSection("Grades")).Enhance("Abrir notas");
 
         RefreshSetupState();
     }
@@ -121,16 +116,6 @@ public partial class GettingStartedViewModel : ReactiveObject, IGettingStartedVi
     public IEnhancedCommand<Unit> StartInitialSetup { get; }
 
     public IEnhancedCommand<Unit> OpenNextSetupStep { get; }
-
-    public IEnhancedCommand<Unit> OpenCourses { get; }
-
-    public IEnhancedCommand<Unit> OpenClasses { get; }
-
-    public IEnhancedCommand<Unit> OpenStudents { get; }
-
-    public IEnhancedCommand<Unit> OpenCriteria { get; }
-
-    public IEnhancedCommand<Unit> OpenGrades { get; }
 
     async Task DoOpenNextSetupStep()
     {

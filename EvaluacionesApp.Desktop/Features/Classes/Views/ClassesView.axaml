@@ -29,7 +29,7 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
         <EnhancedButton Content="Añadir clase"
-                        Icon="{Icon mdi-plus-circle-outline}"
+                        Icon="{Icon mdi-account-multiple-plus-outline}"
                         Classes="Primary"
                         Command="{Binding AddClass}"
                         IsVisible="{Binding ShowToolbarAddClassAction}"/>
@@ -83,7 +83,7 @@
                          TextAlignment="Center"
                          MaxWidth="360"/>
               <EnhancedButton Content="Añadir clase"
-                              Icon="{Icon mdi-plus-circle-outline}"
+                              Icon="{Icon mdi-account-multiple-plus-outline}"
                               Classes="Primary"
                               Command="{Binding AddClass}"/>
             </FlexPanel>

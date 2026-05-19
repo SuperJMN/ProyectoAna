@@ -16,7 +16,7 @@
                  Gap="8"
                  AlignItems="Center">
         <EnhancedButton Content="Añadir curso"
-                        Icon="{Icon mdi-plus-circle-outline}"
+                        Icon="{Icon mdi-book-plus-outline}"
                         Classes="Primary"
                         Command="{Binding AddCourse}"
                         IsVisible="{Binding ShowToolbarAddCourseAction}"/>
@@ -54,7 +54,7 @@
                          TextAlignment="Center"
                          MaxWidth="360"/>
               <EnhancedButton Content="Añadir curso"
-                              Icon="{Icon mdi-plus-circle-outline}"
+                              Icon="{Icon mdi-book-plus-outline}"
                               Classes="Primary"
                               Command="{Binding AddCourse}"/>
             </FlexPanel>

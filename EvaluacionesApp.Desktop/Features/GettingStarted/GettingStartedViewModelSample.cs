@@ -39,19 +39,4 @@ public sealed class GettingStartedViewModelSample : IGettingStartedViewModel
 
     public IEnhancedCommand<Unit> OpenNextSetupStep { get; } =
         ReactiveCommand.Create(() => { }).Enhance("Continuar");
-
-    public IEnhancedCommand<Unit> OpenCourses { get; } =
-        ReactiveCommand.Create(() => { }).Enhance("Abrir cursos");
-
-    public IEnhancedCommand<Unit> OpenClasses { get; } =
-        ReactiveCommand.Create(() => { }).Enhance("Abrir clases");
-
-    public IEnhancedCommand<Unit> OpenStudents { get; } =
-        ReactiveCommand.Create(() => { }).Enhance("Abrir alumnos");
-
-    public IEnhancedCommand<Unit> OpenCriteria { get; } =
-        ReactiveCommand.Create(() => { }).Enhance("Abrir criterios");
-
-    public IEnhancedCommand<Unit> OpenGrades { get; } =
-        ReactiveCommand.Create(() => { }).Enhance("Abrir notas");
 }

@@ -42,7 +42,7 @@
                 <Card Header="Primeros pasos"
                       Subheader="{Binding SetupStatus}"
                       BootstrapGridPanel.Col="12"
-                      BootstrapGridPanel.ColLg="7">
+                      BootstrapGridPanel.ColLg="12">
                     <FlexPanel Direction="Column"
                                Gap="12"
                                AlignItems="Start">
@@ -53,7 +53,7 @@
                         <TextBlock Text="{Binding NextSetupStepMessage}"
                                    TextWrapping="Wrap" />
                         <EnhancedButton Content="Iniciar asistente"
-                                        Icon="{Icon mdi-play-circle-outline}"
+                                        Icon="{Icon mdi-wizard-hat}"
                                         Classes="Primary"
                                         Command="{Binding StartInitialSetup}"
                                         IsVisible="{Binding CanStartInitialSetup}" />
@@ -62,31 +62,6 @@
                                         Classes="Primary"
                                         Command="{Binding OpenNextSetupStep}"
                                         IsVisible="{Binding !CanStartInitialSetup}" />
-                    </FlexPanel>
-                </Card>
-
-                <Card Header="Continuar"
-                      Subheader="Flujo de preparación"
-                      BootstrapGridPanel.Col="12"
-                      BootstrapGridPanel.ColLg="5">
-                    <FlexPanel Direction="Column"
-                               Gap="8"
-                               AlignItems="Stretch">
-                        <EnhancedButton Content="Cursos"
-                                        Icon="{Icon mdi-school}"
-                                        Command="{Binding OpenCourses}" />
-                        <EnhancedButton Content="Clases"
-                                        Icon="{Icon mdi-google-classroom}"
-                                        Command="{Binding OpenClasses}" />
-                        <EnhancedButton Content="Alumnos"
-                                        Icon="{Icon mdi-account-group}"
-                                        Command="{Binding OpenStudents}" />
-                        <EnhancedButton Content="Criterios"
-                                        Icon="{Icon mdi-format-list-bulleted}"
-                                        Command="{Binding OpenCriteria}" />
-                        <EnhancedButton Content="Notas"
-                                        Icon="{Icon mdi-numeric-3-box-multiple}"
-                                        Command="{Binding OpenGrades}" />
                     </FlexPanel>
                 </Card>
             </BootstrapGridPanel>
