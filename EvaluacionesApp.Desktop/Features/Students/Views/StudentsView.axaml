@@ -84,52 +84,65 @@
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*">
-        <FlexPanel Grid.Row="0" Wrap="Wrap" Gap="8" Margin="8" AlignItems="Center">
-            <TextBlock Text="Curso:" VerticalAlignment="Center" />
-            <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Text="Clase:" VerticalAlignment="Center" />
-            <ComboBox Width="180" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
-                <ComboBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Name}" />
-                    </DataTemplate>
-                </ComboBox.ItemTemplate>
-            </ComboBox>
-            <EnhancedButton Content="Añadir alumno"
-                            Icon="{Icon mdi-plus-circle-outline}"
-                            Classes="Primary"
-                            Command="{Binding AddStudent}"
-                            IsVisible="{Binding ShowToolbarAddStudentAction}" />
-            <EnhancedButton Content="Seleccionar"
-                            Icon="{Icon mdi-checkbox-multiple-marked-outline}"
-                            Classes="Secondary"
-                            Command="{Binding EnterCompactSelectionMode}"
-                            IsVisible="{Binding ShowEnterStudentSelectionAction}" />
-            <EnhancedButton Content="Cancelar"
-                            Icon="{Icon mdi-close-circle-outline}"
-                            Classes="Secondary"
-                            Command="{Binding ExitCompactSelectionMode}"
-                            IsVisible="{Binding IsCompactSelectionMode}" />
-            <EnhancedButton Content="Mover a clase"
-                            Icon="{Icon mdi-arrow-right-bold-outline}"
-                            Classes="Secondary"
-                            IsEnabled="{Binding HasSelectedStudents}"
-                            IsVisible="{Binding ShowMoveStudentsAction}">
-                <Button.Flyout>
-                    <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
-                </Button.Flyout>
-            </EnhancedButton>
-            <EnhancedButton Content="Eliminar"
-                            Icon="{Icon mdi-delete-outline}"
-                            Classes="Destructive"
-                            Command="{Binding DeleteStudent}"
-                            IsVisible="{Binding ShowDeleteStudentAction}" />
+        <FlexPanel Grid.Row="0" Direction="Column" Gap="8" Margin="8" AlignItems="Stretch">
+            <FlexPanel Wrap="Wrap" Gap="8" AlignItems="Center">
+                <FlexPanel Gap="6" AlignItems="Center">
+                    <TextBlock Text="Curso:" VerticalAlignment="Center" />
+                    <ComboBox Width="220" ItemsSource="{Binding Courses}" SelectedItem="{Binding SelectedCourse}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </FlexPanel>
+                <FlexPanel Gap="6" AlignItems="Center">
+                    <TextBlock Text="Clase:" VerticalAlignment="Center" />
+                    <ComboBox Width="180" ItemsSource="{Binding SelectedCourse.Classes}" SelectedItem="{Binding SelectedClass}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </FlexPanel>
+            </FlexPanel>
+            <AutoWrapGrid ColumnSpacing="8" RowSpacing="8">
+                <EnhancedButton Content="Añadir alumno"
+                                HorizontalAlignment="Stretch"
+                                Icon="{Icon mdi-plus-circle-outline}"
+                                Classes="Primary"
+                                Command="{Binding AddStudent}"
+                                IsVisible="{Binding ShowToolbarAddStudentAction}" />
+                <EnhancedButton Content="Seleccionar"
+                                HorizontalAlignment="Stretch"
+                                Icon="{Icon mdi-checkbox-multiple-marked-outline}"
+                                Classes="Secondary"
+                                Command="{Binding EnterCompactSelectionMode}"
+                                IsVisible="{Binding ShowEnterStudentSelectionAction}" />
+                <EnhancedButton Content="Cancelar"
+                                HorizontalAlignment="Stretch"
+                                Icon="{Icon mdi-close-circle-outline}"
+                                Classes="Secondary"
+                                Command="{Binding ExitCompactSelectionMode}"
+                                IsVisible="{Binding IsCompactSelectionMode}" />
+                <EnhancedButton Content="Mover a clase"
+                                HorizontalAlignment="Stretch"
+                                Icon="{Icon mdi-arrow-right-bold-outline}"
+                                Classes="Secondary"
+                                IsEnabled="{Binding HasSelectedStudents}"
+                                IsVisible="{Binding ShowMoveStudentsAction}">
+                    <Button.Flyout>
+                        <MenuFlyout ItemsSource="{Binding MoveStudentsMenu}" ItemContainerTheme="{StaticResource MenuViewMenuItem}" />
+                    </Button.Flyout>
+                </EnhancedButton>
+                <EnhancedButton Content="Eliminar"
+                                HorizontalAlignment="Stretch"
+                                Icon="{Icon mdi-delete-outline}"
+                                Classes="Destructive"
+                                Command="{Binding DeleteStudent}"
+                                IsVisible="{Binding ShowDeleteStudentAction}" />
+            </AutoWrapGrid>
         </FlexPanel>
 
         <Panel Grid.Row="1">
