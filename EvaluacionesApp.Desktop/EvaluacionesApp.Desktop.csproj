@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.2" />
+    <PackageReference Include="Avalonia" Version="12.0.4" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.0.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.0.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
@@ -37,13 +37,13 @@
     <PackageReference Include="ReactiveUI.SourceGenerators" Version="2.6.1" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
     <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0" />
-    <PackageReference Include="ReactiveUI.Validation" Version="7.0.5" />
+    <PackageReference Include="ReactiveUI.Validation" Version="7.1.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <PackageReference Include="Splat" Version="19.3.1" />
+    <PackageReference Include="Splat" Version="19.4.1" />
     <PackageReference Include="System.Reactive" Version="6.1.0" />
-    <PackageReference Include="DynamicData" Version="9.4.1" />
-    <PackageReference Include="Zafiro.UI" Version="47.0.7" />
-    <PackageReference Include="Zafiro.Avalonia" Version="52.0.4" />
+    <PackageReference Include="DynamicData" Version="9.4.31" />
+    <PackageReference Include="Zafiro.UI" Version="47.1.1" />
+    <PackageReference Include="Zafiro.Avalonia" Version="53.3.1" />
     <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="52.0.4" />
     <PackageReference Include="Zafiro.Avalonia.Generators" Version="52.0.4" PrivateAssets="all" />
     <PackageReference Include="Zafiro.Avalonia.Icons.Optris" Version="52.0.4" />

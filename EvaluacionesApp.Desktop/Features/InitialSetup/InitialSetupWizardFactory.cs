@@ -9,15 +9,15 @@ public sealed class InitialSetupWizardFactory
     {
         var graph = WizardGraph.For<InitialSetupDraft>();
         var courses = new InitialSetupCoursesStepViewModel();
-        var coursesNode = graph.Step(courses, "Cursos")
+        var coursesNode = graph.Step(() => courses, "Cursos")
             .Next(step =>
                 {
                     var classes = new InitialSetupClassesStepViewModel(step.CreateDraft());
-                    return graph.Step(classes, "Clases")
-                        .Finish(step => step.CreateDraft(), classes.IsValid, "Crear")
+                    return graph.Step(() => classes, "Clases")
+                        .Finish(step => step.CreateDraft(), step => step.IsValid, "Crear")
                         .Build();
                 },
-                courses.IsValid,
+                step => step.IsValid,
                 "Siguiente")
             .Build();
 
