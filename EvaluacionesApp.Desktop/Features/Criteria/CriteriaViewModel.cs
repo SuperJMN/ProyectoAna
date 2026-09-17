@@ -135,6 +135,7 @@ public partial class CriteriaViewModel : ReactiveValidationObject, IDisposable
                 .AutoRefresh(c => c.Name)
                 .AutoRefresh(c => c.Weight)
                 .AutoRefresh(c => c.Term)
+                .Where(changes => changes.Any(change => change.Reason == ChangeReason.Refresh))
                 .Throttle(saveInterval, this.scheduler)
                 .Select(_ => Unit.Default) ?? Observable.Empty<Unit>())
             .Switch()

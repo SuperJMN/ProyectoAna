@@ -194,6 +194,7 @@ public partial class GradesViewModel : ReactiveObject, IDisposable
             .Select(cls => cls != null
                 ? cls.AssessmentsChanges
                     .AutoRefresh(a => a.Score)
+                    .Where(changes => changes.Any(change => change.Reason == ChangeReason.Refresh))
                     .Select(_ => Unit.Default)
                 : Observable.Empty<Unit>())
             .Switch()

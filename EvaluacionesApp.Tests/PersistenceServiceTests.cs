@@ -207,6 +207,116 @@ public sealed class PersistenceServiceTests
         Assert.Equal("{ invalid json", await File.ReadAllTextAsync(quarantine));
     }
 
+    [Fact]
+    public async Task Save_does_not_deadlock_when_blocking_on_synchronization_context()
+    {
+        var path = CreateDataPath();
+        var service = new PersistenceService(path);
+        var root = new Root();
+
+        var completed = await Task.Run(() =>
+        {
+            var prevContext = SynchronizationContext.Current;
+            try
+            {
+                var mockContext = new BlockingSynchronizationContext();
+                SynchronizationContext.SetSynchronizationContext(mockContext);
+
+                var task = service.Save(root);
+                return task.Wait(2000);
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(prevContext);
+            }
+        });
+
+        Assert.True(completed, "Save deadlocked when called with an active SynchronizationContext");
+        Assert.True(File.Exists(path));
+        Assert.False(File.Exists(path + ".tmp"));
+    }
+
+    private sealed class BlockingSynchronizationContext : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            // Simulates UI thread blocked waiting, so queued callbacks are never executed
+        }
+
+        public override void Send(SendOrPostCallback d, object? state)
+        {
+        }
+    }
+
+    [Fact]
+    public async Task Save_successive_calls_create_backup_and_cleanup_temp()
+    {
+        var path = CreateDataPath();
+        var service = new PersistenceService(path);
+
+        var root1 = new Root { Version = "1.0", Courses = { new Course { Id = "c1", Name = "Course 1" } } };
+        await service.Save(root1);
+        Assert.True(File.Exists(path));
+        Assert.False(File.Exists(path + ".tmp"));
+        Assert.False(File.Exists(path + ".bak"));
+
+        var root2 = new Root { Version = "2.0", Courses = { new Course { Id = "c2", Name = "Course 2" } } };
+        await service.Save(root2);
+        Assert.True(File.Exists(path));
+        Assert.True(File.Exists(path + ".bak"));
+        Assert.False(File.Exists(path + ".tmp"));
+
+        var loaded = await service.Load();
+        Assert.Equal("2.0", loaded.Version);
+        Assert.Equal("Course 2", Assert.Single(loaded.Courses).Name);
+    }
+
+    [Fact]
+    public async Task Load_recovers_from_interrupted_temp_file_when_primary_missing()
+    {
+        var path = CreateDataPath();
+        var tempPath = path + ".tmp";
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        // Simulate an interrupted save where only .tmp was written
+        var service = new PersistenceService(path);
+        var root = new Root { Version = "recovered-from-tmp", Courses = { new Course { Id = "c-tmp", Name = "Recovered Course" } } };
+
+        // Write root to tempPath directly
+        var serviceTemp = new PersistenceService(tempPath);
+        await serviceTemp.Save(root);
+        // Now tempPath exists, and path does not exist
+        Assert.True(File.Exists(tempPath));
+        Assert.False(File.Exists(path));
+
+        var loaded = await service.Load();
+        Assert.Equal("recovered-from-tmp", loaded.Version);
+        Assert.Equal("Recovered Course", Assert.Single(loaded.Courses).Name);
+        Assert.True(File.Exists(path));
+        Assert.False(File.Exists(tempPath));
+    }
+
+    [Fact]
+    public async Task Load_recovers_from_backup_file_when_primary_missing()
+    {
+        var path = CreateDataPath();
+        var backupPath = path + ".bak";
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+        var service = new PersistenceService(path);
+        var root = new Root { Version = "recovered-from-bak", Courses = { new Course { Id = "c-bak", Name = "Backup Course" } } };
+
+        // Save root as backupPath
+        var serviceBak = new PersistenceService(backupPath);
+        await serviceBak.Save(root);
+        Assert.True(File.Exists(backupPath));
+        Assert.False(File.Exists(path));
+
+        var loaded = await service.Load();
+        Assert.Equal("recovered-from-bak", loaded.Version);
+        Assert.Equal("Backup Course", Assert.Single(loaded.Courses).Name);
+    }
+
     static string CreateDataPath()
     {
         var directory = Path.Combine(Path.GetTempPath(), "evaluaciones-tests", Guid.NewGuid().ToString("N"));

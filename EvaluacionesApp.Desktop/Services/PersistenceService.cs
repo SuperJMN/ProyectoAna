@@ -75,19 +75,29 @@ public class PersistenceService
         return Path.Combine(appFolder, "persistencia.json");
     }
 
-    public async Task<Root> Load()
+    public async Task<Root> Load(CancellationToken cancellationToken = default)
     {
-        await _fileLock.WaitAsync();
+        await _fileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (!File.Exists(DataPath))
             {
+                RecoverFromTemporaryOrBackup();
+            }
+
+            if (!File.Exists(DataPath))
+            {
                 return new Root();
             }
+
             try
             {
-                await using var s = File.OpenRead(DataPath);
-                var persisted = await JsonSerializer.DeserializeAsync<PersistedRoot>(s, options);
+                PersistedRoot? persisted;
+                using (var s = File.OpenRead(DataPath))
+                {
+                    persisted = JsonSerializer.Deserialize<PersistedRoot>(s, options);
+                }
+
                 var result = ConvertToDomain(persisted);
                 LastSanityReport = SanityChecker.Analyze(result);
                 SanityChecker.LogReport(LastSanityReport);
@@ -106,6 +116,40 @@ public class PersistenceService
         }
     }
 
+    private void RecoverFromTemporaryOrBackup()
+    {
+        var tempPath = DataPath + ".tmp";
+        if (File.Exists(tempPath))
+        {
+            try
+            {
+                using (var s = File.OpenRead(tempPath))
+                {
+                    var test = JsonSerializer.Deserialize<PersistedRoot>(s, options);
+                    if (test != null)
+                    {
+                        File.Move(tempPath, DataPath, overwrite: true);
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+        }
+
+        var backupPath = DataPath + ".bak";
+        if (File.Exists(backupPath))
+        {
+            try
+            {
+                File.Copy(backupPath, DataPath, overwrite: true);
+            }
+            catch { }
+        }
+    }
+
     void QuarantineCorruptFile(Exception cause)
     {
         try
@@ -121,34 +165,31 @@ public class PersistenceService
         }
     }
 
-    public async Task Save(Root root)
+    public async Task Save(Root root, CancellationToken cancellationToken = default)
     {
-        await _fileLock.WaitAsync();
+        await _fileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             // Clean duplicates before saving
             CleanDuplicateAssessments(root);
             
-            Directory.CreateDirectory(Path.GetDirectoryName(DataPath)!);
+            var directory = Path.GetDirectoryName(DataPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
             
-            // Write to temp file first to avoid corruption
+            // Write to temp file first to avoid corruption, deterministic synchronous close
             var tempPath = DataPath + ".tmp";
-            await using (var s = File.Create(tempPath))
+            using (var s = File.Create(tempPath))
             {
                 var persisted = ConvertToPersisted(root);
-                await JsonSerializer.SerializeAsync(s, persisted, options);
-                await s.FlushAsync();
+                JsonSerializer.Serialize(s, persisted, options);
+                s.Flush(flushToDisk: true);
             }
             
             // Atomic replace with backup of previous version
-            if (File.Exists(DataPath))
-            {
-                File.Replace(tempPath, DataPath, DataPath + ".bak", ignoreMetadataErrors: true);
-            }
-            else
-            {
-                File.Move(tempPath, DataPath);
-            }
+            AtomicReplace(tempPath, DataPath);
         }
         catch
         {
@@ -163,6 +204,46 @@ public class PersistenceService
         finally
         {
             _fileLock.Release();
+        }
+    }
+
+    private static void AtomicReplace(string sourcePath, string targetPath)
+    {
+        var backupPath = targetPath + ".bak";
+        const int maxRetries = 5;
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                if (File.Exists(targetPath))
+                {
+                    if (File.Exists(backupPath))
+                    {
+                        try { File.Delete(backupPath); } catch { }
+                    }
+
+                    try
+                    {
+                        File.Replace(sourcePath, targetPath, backupPath, ignoreMetadataErrors: true);
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        File.Copy(targetPath, backupPath, overwrite: true);
+                        File.Move(sourcePath, targetPath, overwrite: true);
+                    }
+                }
+                else
+                {
+                    File.Move(sourcePath, targetPath, overwrite: true);
+                }
+
+                return;
+            }
+            catch (IOException) when (attempt < maxRetries)
+            {
+                Thread.Sleep(50 * attempt);
+            }
         }
     }
     

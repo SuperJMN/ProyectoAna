@@ -59,6 +59,7 @@ public partial class CoursesViewModel : ReactiveValidationObject, IDisposable
         root.CoursesChanges
             .AutoRefresh(c => c.Name)
             .AutoRefresh(c => c.Id)
+            .Where(changes => changes.Any(change => change.Reason == ChangeReason.Refresh))
             .Throttle(TimeSpan.FromMilliseconds(400), RxSchedulers.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)

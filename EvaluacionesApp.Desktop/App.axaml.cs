@@ -53,7 +53,7 @@ public partial class App : Application
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            store.SaveAsync(cts.Token).GetAwaiter().GetResult();
+            Task.Run(() => store.SaveAsync(cts.Token), cts.Token).Wait(TimeSpan.FromSeconds(5));
         }
         catch (Exception ex)
         {

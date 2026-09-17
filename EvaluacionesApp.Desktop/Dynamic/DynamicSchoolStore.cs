@@ -21,7 +21,7 @@ public class DynamicSchoolStore : IDynamicSchoolStore
     public async Task SaveAsync(CancellationToken cancellationToken = default)
     {
         var model = Root.ToDomain();
-        await persistenceService.Save(model).ConfigureAwait(false);
+        await persistenceService.Save(model, cancellationToken).ConfigureAwait(false);
     }
 
     public void Dispose()
