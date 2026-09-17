@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -44,9 +44,9 @@
     <PackageReference Include="DynamicData" Version="9.4.31" />
     <PackageReference Include="Zafiro.UI" Version="47.1.1" />
     <PackageReference Include="Zafiro.Avalonia" Version="53.3.1" />
-    <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="52.0.4" />
-    <PackageReference Include="Zafiro.Avalonia.Generators" Version="52.0.4" PrivateAssets="all" />
-    <PackageReference Include="Zafiro.Avalonia.Icons.Optris" Version="52.0.4" />
+    <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="53.3.1" />
+    <PackageReference Include="Zafiro.Avalonia.Generators" Version="53.3.1" PrivateAssets="all" />
+    <PackageReference Include="Zafiro.Avalonia.Icons.Optris" Version="53.3.1" />
     <PackageReference Include="Zafiro.Avalonia.Mcp.AppHost" Version="0.0.61" />
   </ItemGroup>
 </Project>
