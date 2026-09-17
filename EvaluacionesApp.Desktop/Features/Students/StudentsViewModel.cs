@@ -365,6 +365,7 @@ public partial class StudentsViewModel : ReactiveValidationObject, IDisposable
             .AutoRefresh(s => s.Positivos)
             .AutoRefresh(s => s.Negativos)
             .AutoRefresh(s => s.Observaciones)
+            .Where(changes => changes.Any(change => change.Reason == ChangeReason.Refresh))
             .Throttle(TimeSpan.FromMilliseconds(300), RxSchedulers.MainThreadScheduler)
             .Select(_ => Unit.Default)
             .InvokeCommand(Save)
